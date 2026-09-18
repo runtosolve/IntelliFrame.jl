@@ -1,4 +1,4 @@
-using CSV, DataFrames, RoofHugger, Plots
+using CSV, DataFrames, IntelliFrame, Plots
 
 
 
@@ -6,7 +6,7 @@ using CSV, DataFrames, RoofHugger, Plots
 purlin_data = CSV.read("database/Purlins.csv",
 DataFrame);
 
-roof_hugger_data = CSV.read("database/Huggers.csv",
+intelli_frame_data = CSV.read("database/IntelliFrameRF.csv",
 DataFrame);
 
 existing_deck_data = CSV.read("database/Existing_Deck.csv",
@@ -16,18 +16,20 @@ new_deck_data = CSV.read("database/New_Deck.csv",
 DataFrame);
 
 
-purlin_spans = (25.0)
 
-purlin_type_1 = "C6x2.5 1345"
-purlin_type_2 = "none"
 
-purlin_size_span_assignment = (1)
+purlin_spans = (25.0, 25.0, 25.0)
 
-purlin_laps = ()
+purlin_type_1 = "Z8x2.5 060"
+purlin_type_2 = "Z8x2.5 075"
+
+purlin_size_span_assignment = (2, 1, 2)
+
+purlin_laps = (2.0, 2.0, 2.0, 2.0)
 
 purlin_spacing = 4.0
 
-frame_flange_width = 10.0 
+frame_flange_width = 16.0 
 
 purlin_frame_connection = "Clip-mounted"
 
@@ -51,19 +53,3 @@ plot(purlin_line.model.inputs.z, purlin_line.internal_forces.Vyy, markershape = 
 purlin_line.failure_location
 purlin_line.failure_limit_state
 purlin_line.applied_pressure*1000*144
-
-
-
-roof_hugger_type = "Model C 1.83 16g"
-
-hugger_window_dimensions = (2.5, 1.625)  #(width, height) in inches
-
-new_deck_type = "PBR 22 gauge"
-
-
-roof_hugger_material_properties = [(29500.0, 0.30, 55.0, 70.0)]  #E, ν, Fy, Fu
-
-roof_hugger_purlin_line = UI.retrofit_UI_mapper(purlin_line, roof_hugger_data, roof_hugger_type, new_deck_type, new_deck_data, existing_deck_type, existing_deck_data, roof_hugger_material_properties, "gravity");
-
-
-roof_hugger_purlin_line.applied_pressure*1000*144

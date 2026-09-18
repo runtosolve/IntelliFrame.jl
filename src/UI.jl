@@ -2,7 +2,7 @@ module UI
 
 using PurlinLine, Plots, LinesCurvesNodes, CrossSectionGeometry, CSV, DataFrames
 
-using ..RoofHugger
+using ..IntelliFrame
 
 function define_lap_section_types(purlin_size_span_assignment)
 
@@ -351,21 +351,21 @@ function existing_roof_UI_mapper(purlin_spans, purlin_laps, purlin_spacing, roof
 
 end;
 
-function retrofit_UI_mapper(purlin_line, roof_hugger_data, roof_hugger_type, new_deck_type, new_deck_data, existing_deck_type, existing_deck_data, roof_hugger_material_properties, loading_direction)
+function retrofit_UI_mapper(purlin_line, intelli_frame_data, intelli_frame_type, new_deck_type, new_deck_data, existing_deck_type, existing_deck_data, intelli_frame_material_properties, loading_direction)
 
 
-    roof_hugger_section_index = findfirst(==(roof_hugger_type), roof_hugger_data.section_name)
+    intelli_frame_section_index = findfirst(==(intelli_frame_type), intelli_frame_data.section_name)
 
-    roof_hugger_cross_section_dimensions = [tuple([roof_hugger_data[roof_hugger_section_index, :][i] for i = 2:13]...)]
+    intelli_frame_cross_section_dimensions = [tuple([intelli_frame_data[intelli_frame_section_index, :][i] for i = 2:13]...)]
 
-    # Define the Roof Hugger material properties.
-    # roof_hugger_material_properties = [(29500.0, 0.30, 55.0, 70.0)] #E, ν, Fy, Fu
+    # Define the IntelliFrame material properties.
+    # intelli_frame_material_properties = [(29500.0, 0.30, 55.0, 70.0)] #E, ν, Fy, Fu
 
-    # Define the Roof Hugger punchout dimensions.
-	roof_hugger_punch_out_dimensions = [(roof_hugger_data[roof_hugger_section_index, :punchout_width], roof_hugger_data[roof_hugger_section_index, :punchout_height])]
+    # Define the IntelliFrame punchout dimensions.
+	intelli_frame_punch_out_dimensions = [(intelli_frame_data[intelli_frame_section_index, :punchout_width], intelli_frame_data[intelli_frame_section_index, :punchout_height])]
 
 	
-    # roof_hugger_punch_out_dimensions = [hugger_window_dimensions] #length, height
+    # intelli_frame_punch_out_dimensions = [hugger_window_dimensions] #length, height
 
     #Define the new deck details.
 
@@ -408,7 +408,7 @@ function retrofit_UI_mapper(purlin_line, roof_hugger_data, roof_hugger_type, new
 
 
 
-	#Roof Hugger is attached with closely spaced screws to existing deck so update existing deck details.
+	#IntelliFrame is attached with closely spaced screws to existing deck so update existing deck details.
 	existing_deck_index = findfirst(==(existing_deck_type), existing_deck_data.deck_name)
     
     fastener_diameter = 0.212
@@ -417,15 +417,15 @@ function retrofit_UI_mapper(purlin_line, roof_hugger_data, roof_hugger_type, new
     purlin_line.inputs.deck_details = ("screw-fastened", existing_deck_data[existing_deck_index, 2], fastener_spacing, fastener_diameter, Fss)
 
     # Assemble the purlin line model, now with the addition of Hugger Framing.
-    roof_hugger_purlin_line = RoofHugger.define(purlin_line.inputs.design_code, hugger_purlin_segments, purlin_line.inputs.spacing, purlin_line.inputs.roof_slope, purlin_line.inputs.cross_section_dimensions, roof_hugger_cross_section_dimensions, roof_hugger_punch_out_dimensions, purlin_line.inputs.material_properties, roof_hugger_material_properties, purlin_line.inputs.deck_details, purlin_line.inputs.deck_material_properties, new_roof_panel_details, new_roof_panel_material_properties, purlin_line.inputs.frame_flange_width, purlin_line.inputs.support_locations, purlin_line.inputs.purlin_frame_connections, purlin_line.inputs.bridging_locations)
+    intelli_frame_purlin_line = IntelliFrame.define(purlin_line.inputs.design_code, hugger_purlin_segments, purlin_line.inputs.spacing, purlin_line.inputs.roof_slope, purlin_line.inputs.cross_section_dimensions, intelli_frame_cross_section_dimensions, intelli_frame_punch_out_dimensions, purlin_line.inputs.material_properties, intelli_frame_material_properties, purlin_line.inputs.deck_details, purlin_line.inputs.deck_material_properties, new_roof_panel_details, new_roof_panel_material_properties, purlin_line.inputs.frame_flange_width, purlin_line.inputs.support_locations, purlin_line.inputs.purlin_frame_connections, purlin_line.inputs.bridging_locations)
 
 
-    # Run a test to calculate the expected roof system failure pressure including the Roof Hugger.
-    # roof_hugger_purlin_line.loading_direction = "gravity"
-    roof_hugger_purlin_line.loading_direction = loading_direction
-    roof_hugger_purlin_line = RoofHugger.capacity(roof_hugger_purlin_line)
+    # Run a test to calculate the expected roof system failure pressure including the IntelliFrame.
+    # intelli_frame_purlin_line.loading_direction = "gravity"
+    intelli_frame_purlin_line.loading_direction = loading_direction
+    intelli_frame_purlin_line = IntelliFrame.capacity(intelli_frame_purlin_line)
 
-    return roof_hugger_purlin_line
+    return intelli_frame_purlin_line
 
 end
 
@@ -498,7 +498,7 @@ end
 
 
 
-function plot_roof_hugger_purlin_geometry(t_purlin, t_hugger, xcoords_center_purlin, ycoords_center_purlin, roof_slope, xcoords_roof_hugger_purlin_line, ycoords_roof_hugger_purlin_line, xcoords_center_roof_hugger, ycoords_center_roof_hugger)
+function plot_intelli_frame_purlin_geometry(t_purlin, t_hugger, xcoords_center_purlin, ycoords_center_purlin, roof_slope, xcoords_intelli_frame_purlin_line, ycoords_intelli_frame_purlin_line, xcoords_center_intelli_frame, ycoords_center_intelli_frame)
 
     center_nodes_purlin, out_nodes_purlin, in_nodes_purlin = generate_purlin_geometry(t_purlin, xcoords_center_purlin, ycoords_center_purlin, roof_slope)
 
@@ -508,23 +508,23 @@ function plot_roof_hugger_purlin_geometry(t_purlin, t_hugger, xcoords_center_pur
 
     plot!(in_nodes_purlin[:, 1], in_nodes_purlin[:, 2], aspect_ratio=:equal, linecolor=:grey, legend=false)
 
-    roof_hugger_bottom_flange_centerline_node = 28
-    Δx = xcoords_roof_hugger_purlin_line[roof_hugger_bottom_flange_centerline_node]
-    Δy = ycoords_roof_hugger_purlin_line[roof_hugger_bottom_flange_centerline_node]
+    intelli_frame_bottom_flange_centerline_node = 28
+    Δx = xcoords_intelli_frame_purlin_line[intelli_frame_bottom_flange_centerline_node]
+    Δy = ycoords_intelli_frame_purlin_line[intelli_frame_bottom_flange_centerline_node]
     Δz = 0.0
 
-    center_nodes_roof_hugger, out_nodes_roof_hugger, in_nodes_roof_hugger = generate_roof_hugger_geometry(t_hugger, xcoords_center_roof_hugger, ycoords_center_roof_hugger, roof_slope, Δx, Δy, Δz)
+    center_nodes_intelli_frame, out_nodes_intelli_frame, in_nodes_intelli_frame = generate_intelli_frame_geometry(t_hugger, xcoords_center_intelli_frame, ycoords_center_intelli_frame, roof_slope, Δx, Δy, Δz)
 
-    plot!(center_nodes_roof_hugger[:, 1], center_nodes_roof_hugger[:, 2], aspect_ratio=:equal, linecolor=:grey, legend=false)
+    plot!(center_nodes_intelli_frame[:, 1], center_nodes_intelli_frame[:, 2], aspect_ratio=:equal, linecolor=:grey, legend=false)
 
-    plot!(out_nodes_roof_hugger[:, 1], out_nodes_roof_hugger[:, 2], aspect_ratio=:equal, linecolor=:grey, legend=false)
+    plot!(out_nodes_intelli_frame[:, 1], out_nodes_intelli_frame[:, 2], aspect_ratio=:equal, linecolor=:grey, legend=false)
 
-    plot!(in_nodes_roof_hugger[:, 1], in_nodes_roof_hugger[:, 2], aspect_ratio=:equal, linecolor=:grey, legend=false)
+    plot!(in_nodes_intelli_frame[:, 1], in_nodes_intelli_frame[:, 2], aspect_ratio=:equal, linecolor=:grey, legend=false)
 
 end
 
 
-function plot_net_section_roof_hugger_purlin_geometry(t_purlin, t_hugger, xcoords_center_purlin, ycoords_center_purlin, xcoords_center_roof_hugger, ycoords_center_roof_hugger, roof_slope, xcoords_center_roof_hugger_purlin, ycoords_center_roof_hugger_purlin, net_roof_hugger_purlin_node_geometry)
+function plot_net_section_intelli_frame_purlin_geometry(t_purlin, t_hugger, xcoords_center_purlin, ycoords_center_purlin, xcoords_center_intelli_frame, ycoords_center_intelli_frame, roof_slope, xcoords_center_intelli_frame_purlin, ycoords_center_intelli_frame_purlin, net_intelli_frame_purlin_node_geometry)
 
     center_nodes_purlin, out_nodes_purlin, in_nodes_purlin = generate_purlin_geometry(t_purlin, xcoords_center_purlin, ycoords_center_purlin, roof_slope)
 
@@ -534,38 +534,38 @@ function plot_net_section_roof_hugger_purlin_geometry(t_purlin, t_hugger, xcoord
 
     plot!(in_nodes_purlin[:, 1], in_nodes_purlin[:, 2], aspect_ratio=:equal, linecolor=:grey, legend=false)
 
-    roof_hugger_bottom_flange_centerline_node = 28
-    Δx = xcoords_center_roof_hugger_purlin[roof_hugger_bottom_flange_centerline_node]
-    Δy = ycoords_center_roof_hugger_purlin[roof_hugger_bottom_flange_centerline_node]
+    intelli_frame_bottom_flange_centerline_node = 28
+    Δx = xcoords_center_intelli_frame_purlin[intelli_frame_bottom_flange_centerline_node]
+    Δy = ycoords_center_intelli_frame_purlin[intelli_frame_bottom_flange_centerline_node]
     Δz = 0.0
 
-    center_nodes_roof_hugger, out_nodes_roof_hugger, in_nodes_roof_hugger = generate_roof_hugger_geometry(t_hugger, xcoords_center_roof_hugger, ycoords_center_roof_hugger, roof_slope, Δx, Δy, Δz)
+    center_nodes_intelli_frame, out_nodes_intelli_frame, in_nodes_intelli_frame = generate_intelli_frame_geometry(t_hugger, xcoords_center_intelli_frame, ycoords_center_intelli_frame, roof_slope, Δx, Δy, Δz)
 
-    num_roof_hugger_purlin_net_section_nodes = size(net_roof_hugger_purlin_node_geometry, 1)
+    num_intelli_frame_purlin_net_section_nodes = size(net_intelli_frame_purlin_node_geometry, 1)
 
     num_purlin_nodes = size(xcoords_center_purlin, 1)
 
-    num_roof_hugger_net_section_nodes = num_roof_hugger_purlin_net_section_nodes - num_purlin_nodes
+    num_intelli_frame_net_section_nodes = num_intelli_frame_purlin_net_section_nodes - num_purlin_nodes
 
-    plot_index = num_roof_hugger_net_section_nodes
+    plot_index = num_intelli_frame_net_section_nodes
 
-    # plot!(center_nodes_roof_hugger[1:plot_index,1], center_nodes_roof_hugger[1:plot_index,2], aspect_ratio=:equal, linecolor = :grey, legend=false)
+    # plot!(center_nodes_intelli_frame[1:plot_index,1], center_nodes_intelli_frame[1:plot_index,2], aspect_ratio=:equal, linecolor = :grey, legend=false)
 
-    # plot!(out_nodes_roof_hugger[1:plot_index,1], out_nodes_roof_hugger[1:plot_index,2], aspect_ratio=:equal, linecolor = :grey, legend=false)
+    # plot!(out_nodes_intelli_frame[1:plot_index,1], out_nodes_intelli_frame[1:plot_index,2], aspect_ratio=:equal, linecolor = :grey, legend=false)
 
-    # plot!(in_nodes_roof_hugger[1:plot_index,1], in_nodes_roof_hugger[1:plot_index,2], aspect_ratio=:equal, linecolor = :grey, legend=false)
+    # plot!(in_nodes_intelli_frame[1:plot_index,1], in_nodes_intelli_frame[1:plot_index,2], aspect_ratio=:equal, linecolor = :grey, legend=false)
 
-    plot!(center_nodes_roof_hugger[end-plot_index+1:end, 1], center_nodes_roof_hugger[end-plot_index+1:end, 2], aspect_ratio=:equal, linecolor=:grey, legend=false)
+    plot!(center_nodes_intelli_frame[end-plot_index+1:end, 1], center_nodes_intelli_frame[end-plot_index+1:end, 2], aspect_ratio=:equal, linecolor=:grey, legend=false)
 
-    plot!(out_nodes_roof_hugger[end-plot_index+1:end, 1], out_nodes_roof_hugger[end-plot_index+1:end, 2], aspect_ratio=:equal, linecolor=:grey, legend=false)
+    plot!(out_nodes_intelli_frame[end-plot_index+1:end, 1], out_nodes_intelli_frame[end-plot_index+1:end, 2], aspect_ratio=:equal, linecolor=:grey, legend=false)
 
-    plot!(in_nodes_roof_hugger[end-plot_index+1:end, 1], in_nodes_roof_hugger[end-plot_index+1:end, 2], aspect_ratio=:equal, linecolor=:grey, legend=false)
+    plot!(in_nodes_intelli_frame[end-plot_index+1:end, 1], in_nodes_intelli_frame[end-plot_index+1:end, 2], aspect_ratio=:equal, linecolor=:grey, legend=false)
 
 end
 
 
 
-function generate_roof_hugger_geometry(t, xcoords_center, ycoords_center, roof_slope, Δx, Δy, Δz)
+function generate_intelli_frame_geometry(t, xcoords_center, ycoords_center, roof_slope, Δx, Δy, Δz)
 
     center_nodes = [xcoords_center ycoords_center zeros(Float64, length(xcoords_center))]
 
@@ -628,13 +628,13 @@ function load_databases()
 
     purlin_data = CSV.read(joinpath(database_dir, "Purlins.csv"), DataFrame)
 
-    roof_hugger_data = CSV.read(joinpath(database_dir, "Huggers.csv"), DataFrame)
+    intelli_frame_data = CSV.read(joinpath(database_dir, "IntelliFrameRF.csv"), DataFrame)
 
     existing_deck_data = CSV.read(joinpath(database_dir, "Existing_Deck.csv"), DataFrame)
 
     new_deck_data = CSV.read(joinpath(database_dir, "New_Deck.csv"), DataFrame)
 
-    return (purlin_data = purlin_data, roof_hugger_data = roof_hugger_data, existing_deck_data = existing_deck_data, new_deck_data = new_deck_data)
+    return (purlin_data = purlin_data, intelli_frame_data = intelli_frame_data, existing_deck_data = existing_deck_data, new_deck_data = new_deck_data)
 
 end
 

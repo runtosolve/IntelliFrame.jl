@@ -1,4 +1,4 @@
-using CSV, DataFrames, RoofHugger, Plots
+using CSV, DataFrames, IntelliFrame, Plots
 
 
 
@@ -6,7 +6,7 @@ using CSV, DataFrames, RoofHugger, Plots
 purlin_data = CSV.read("database/Purlins.csv",
 DataFrame);
 
-roof_hugger_data = CSV.read("database/Huggers.csv",
+intelli_frame_data = CSV.read("database/IntelliFrameRF.csv",
 DataFrame);
 
 existing_deck_data = CSV.read("database/Existing_Deck.csv",
@@ -36,7 +36,7 @@ purlin_frame_connection = "Clip-mounted"
 
 roof_slope = 1/12
 
-existing_deck_type = "PBR 22 gauge"
+existing_deck_type = "Vertical Rib SS 16 22 gauge"
 
 span_segments = UI.define_span_segments(purlin_spans, purlin_laps, purlin_size_span_assignment)
 

@@ -1,4 +1,4 @@
-using CSV, DataFrames, RoofHugger, Plots
+using CSV, DataFrames, IntelliFrame, Plots
 import PurlinLine
 
 
@@ -7,7 +7,7 @@ import PurlinLine
 purlin_data = CSV.read("database/Purlins.csv",
 DataFrame);
 
-roof_hugger_data = CSV.read("database/Huggers.csv",
+intelli_frame_data = CSV.read("database/IntelliFrameRF.csv",
 DataFrame);
 
 existing_deck_data = CSV.read("database/Existing_Deck.csv",
@@ -80,7 +80,7 @@ purlin_line = UI.existing_roof_UI_mapper(purlin_spans, purlin_laps, purlin_spaci
 # M2[end-1]
 # M1[end-1]
 
-roof_hugger_type = "Model C 1.83 16g"
+intelli_frame_type = "1.75\"x4.5\"x2.125\" 16g"
 
 hugger_window_dimensions = (2.5, 1.625)  #(width, height) in inches
 
@@ -88,13 +88,13 @@ new_deck_type = "PBR 22 gauge"
 
 
 
-roof_hugger_material_properties = [(29500.0, 0.30, 55.0, 70.0)]  #E, ν, Fy, Fu
+intelli_frame_material_properties = [(29500.0, 0.30, 55.0, 70.0)]  #E, ν, Fy, Fu
 
-roof_hugger_purlin_line = UI.retrofit_UI_mapper(purlin_line, roof_hugger_data, roof_hugger_type, new_deck_type, new_deck_data, existing_deck_type, existing_deck_data, roof_hugger_material_properties, "gravity");
+intelli_frame_purlin_line = UI.retrofit_UI_mapper(purlin_line, intelli_frame_data, intelli_frame_type, new_deck_type, new_deck_data, existing_deck_type, existing_deck_data, intelli_frame_material_properties, "gravity");
 
 
 
-# Lcrd = roof_hugger_purlin_line.distortional_buckling_xx_pos[1].Lcr
+# Lcrd = intelli_frame_purlin_line.distortional_buckling_xx_pos[1].Lcr
 
 
 
@@ -109,10 +109,10 @@ roof_hugger_purlin_line = UI.retrofit_UI_mapper(purlin_line, roof_hugger_data, r
 
 
 
-# roof_hugger_purlin_line.internal_forces.Mxx[1]
+# intelli_frame_purlin_line.internal_forces.Mxx[1]
 
 # L = 25*12.0
-# Lcrd = roof_hugger_purlin_line.distortional_buckling_xx_pos[1].Lcr
+# Lcrd = intelli_frame_purlin_line.distortional_buckling_xx_pos[1].Lcr
 # AISIS10016.app23333(L, Lm, M1, M2)
 
 
@@ -146,22 +146,22 @@ plot(purlin_line.model.inputs.z, purlin_line.expected_strengths.eMnd_xx, markers
 
 purlin_line.expected_strengths.eMnd_xx[12]
 
-roof_hugger_purlin_line.failure_location
-roof_hugger_purlin_line.failure_limit_state
-roof_hugger_purlin_line.applied_pressure*1000*144
+intelli_frame_purlin_line.failure_location
+intelli_frame_purlin_line.failure_limit_state
+intelli_frame_purlin_line.applied_pressure*1000*144
 
-roof_hugger_purlin_line.expected_strengths
+intelli_frame_purlin_line.expected_strengths
 
-show(roof_hugger_purlin_line.yielding_flexural_strength_xx)
+show(intelli_frame_purlin_line.yielding_flexural_strength_xx)
 
 
-plot(roof_hugger_purlin_line.model.inputs.z, roof_hugger_purlin_line.expected_strengths.eMnℓ_xx)
+plot(intelli_frame_purlin_line.model.inputs.z, intelli_frame_purlin_line.expected_strengths.eMnℓ_xx)
 
 plot(purlin_line.model.inputs.z, purlin_line.expected_strengths.eMnℓ_xx)
 
 
-plot(roof_hugger_purlin_line.model.inputs.z, roof_hugger_purlin_line.flexure_torsion_demand_to_capacity.action_Mxx)
-plot!(roof_hugger_purlin_line.model.inputs.z, roof_hugger_purlin_line.flexure_torsion_demand_to_capacity.action_Myy)
-plot!(roof_hugger_purlin_line.model.inputs.z, roof_hugger_purlin_line.flexure_torsion_demand_to_capacity.action_B)
-plot!(roof_hugger_purlin_line.model.inputs.z, roof_hugger_purlin_line.flexure_torsion_demand_to_capacity.action_Myy_freeflange)
-plot!(roof_hugger_purlin_line.model.inputs.z, roof_hugger_purlin_line.flexure_torsion_demand_to_capacity.interaction)
+plot(intelli_frame_purlin_line.model.inputs.z, intelli_frame_purlin_line.flexure_torsion_demand_to_capacity.action_Mxx)
+plot!(intelli_frame_purlin_line.model.inputs.z, intelli_frame_purlin_line.flexure_torsion_demand_to_capacity.action_Myy)
+plot!(intelli_frame_purlin_line.model.inputs.z, intelli_frame_purlin_line.flexure_torsion_demand_to_capacity.action_B)
+plot!(intelli_frame_purlin_line.model.inputs.z, intelli_frame_purlin_line.flexure_torsion_demand_to_capacity.action_Myy_freeflange)
+plot!(intelli_frame_purlin_line.model.inputs.z, intelli_frame_purlin_line.flexure_torsion_demand_to_capacity.interaction)

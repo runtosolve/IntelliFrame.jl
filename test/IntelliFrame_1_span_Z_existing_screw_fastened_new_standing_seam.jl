@@ -1,12 +1,12 @@
-# using CSV, DataFrames, RoofHugger, Plots
+# using CSV, DataFrames, IntelliFrame, Plots
 
-using RoofHugger, CSV, DataFrames, Plots
+using IntelliFrame, CSV, DataFrames, Plots
 
 
 purlin_data = CSV.read("database/Purlins.csv",
 DataFrame);
 
-roof_hugger_data = CSV.read("database/Huggers.csv",
+intelli_frame_data = CSV.read("database/IntelliFrameRF.csv",
 DataFrame);
 
 existing_deck_data = CSV.read("database/Existing_Deck.csv",
@@ -57,18 +57,18 @@ purlin_line.applied_pressure*1000*144
 
 
 
-roof_hugger_type = "Model C 4.5 16g"
+intelli_frame_type = "1.75\"x4.5\"x2.125\" 16g"
 
 new_deck_type = "Vertical Rib SS 18 24 gauge"
 
-roof_hugger_material_properties = [(29500.0, 0.30, 55.0, 70.0)]  #E, ν, Fy, Fu
+intelli_frame_material_properties = [(29500.0, 0.30, 55.0, 70.0)]  #E, ν, Fy, Fu
 
-roof_hugger_purlin_line = UI.retrofit_UI_mapper(purlin_line, roof_hugger_data, roof_hugger_type, new_deck_type, new_deck_data, existing_deck_type, existing_deck_data, roof_hugger_material_properties, "gravity");
+intelli_frame_purlin_line = UI.retrofit_UI_mapper(purlin_line, intelli_frame_data, intelli_frame_type, new_deck_type, new_deck_data, existing_deck_type, existing_deck_data, intelli_frame_material_properties, "gravity");
 
 
-roof_hugger_purlin_line.applied_pressure*1000*144
+intelli_frame_purlin_line.applied_pressure*1000*144
 
-roof_hugger_purlin_line.failure_limit_state
+intelli_frame_purlin_line.failure_limit_state
 
 # flexure_torsion_demand_to_capacity::PurlinLine.FlexureTorsion_DemandToCapacity_Data
 # biaxial_bending_demand_to_capacity::PurlinLine.BiaxialBending_DemandToCapacity_Data
@@ -87,23 +87,23 @@ struct BiaxialBending_DemandToCapacity_Data
 end
 
 
-plot(roof_hugger_purlin_line.model.inputs.z, roof_hugger_purlin_line.biaxial_bending_demand_to_capacity.action_Mxx, markershape = :o)
-plot(roof_hugger_purlin_line.model.inputs.z, roof_hugger_purlin_line.biaxial_bending_demand_to_capacity.action_Myy, markershape = :o)
+plot(intelli_frame_purlin_line.model.inputs.z, intelli_frame_purlin_line.biaxial_bending_demand_to_capacity.action_Mxx, markershape = :o)
+plot(intelli_frame_purlin_line.model.inputs.z, intelli_frame_purlin_line.biaxial_bending_demand_to_capacity.action_Myy, markershape = :o)
 
 
 
-plot(roof_hugger_purlin_line.model.inputs.z, roof_hugger_purlin_line.flexure_shear_demand_to_capacity, markershape = :o)
-plot!(roof_hugger_purlin_line.model.inputs.z, roof_hugger_purlin_line.distortional_demand_to_capacity, markershape = :o)
+plot(intelli_frame_purlin_line.model.inputs.z, intelli_frame_purlin_line.flexure_shear_demand_to_capacity, markershape = :o)
+plot!(intelli_frame_purlin_line.model.inputs.z, intelli_frame_purlin_line.distortional_demand_to_capacity, markershape = :o)
 
 
-roof_hugger_purlin_line.local_global_flexural_strength_xx
+intelli_frame_purlin_line.local_global_flexural_strength_xx
 
-roof_hugger_purlin_line.yielding_flexural_strength_xx_net
+intelli_frame_purlin_line.yielding_flexural_strength_xx_net
 
-roof_hugger_purlin_line.yielding_flexural_strength_xx
+intelli_frame_purlin_line.yielding_flexural_strength_xx
 
 
-roof_hugger_purlin_line.distortional_flexural_strength_xx
+intelli_frame_purlin_line.distortional_flexural_strength_xx
 
 # Mne::Float64
 # Mnℓ_pos::Float64
@@ -114,22 +114,22 @@ roof_hugger_purlin_line.distortional_flexural_strength_xx
 
 
 
-roof_hugger_purlin_line.local_global_flexural_strength_xx_no_hole
+intelli_frame_purlin_line.local_global_flexural_strength_xx_no_hole
 
 
-roof_hugger_purlin_line.local_global_flexural_strength_xx_hole
+intelli_frame_purlin_line.local_global_flexural_strength_xx_hole
 
 
-plot(roof_hugger_purlin_line.model.inputs.z, roof_hugger_purlin_line.Β_distortional_gradient_factor, markershape = :o)
+plot(intelli_frame_purlin_line.model.inputs.z, intelli_frame_purlin_line.Β_distortional_gradient_factor, markershape = :o)
 # Β_distortional_gradient_factor
 
 
-plot(roof_hugger_purlin_line.model.inputs.z, roof_hugger_purlin_line.internal_forces.Mxx, markershape = :o)
+plot(intelli_frame_purlin_line.model.inputs.z, intelli_frame_purlin_line.internal_forces.Mxx, markershape = :o)
 
-plot(roof_hugger_purlin_line.model.inputs.z, roof_hugger_purlin_line.expected_strengths.eMnd_xx, markershape = :o)
+plot(intelli_frame_purlin_line.model.inputs.z, intelli_frame_purlin_line.expected_strengths.eMnd_xx, markershape = :o)
 
 
-minimum(roof_hugger_purlin_line.expected_strengths.eMnd_xx)
+minimum(intelli_frame_purlin_line.expected_strengths.eMnd_xx)
 
 
 # eMnd_xx
@@ -137,5 +137,5 @@ minimum(roof_hugger_purlin_line.expected_strengths.eMnd_xx)
 # plot(purlin_line.model.z, purlin_line.internal_forces.Mxx, markershape = :o)
 # plot(purlin_line.model.z, purlin_line.internal_forces.Myy, markershape = :o)
 
-# roof_hugger_purlin_line.model.inputs.kx
-# roof_hugger_purlin_line.model.inputs.kϕ
+# intelli_frame_purlin_line.model.inputs.kx
+# intelli_frame_purlin_line.model.inputs.kϕ
