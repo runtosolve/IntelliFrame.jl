@@ -759,7 +759,7 @@ version = "2025.2.0+0"
 deps = ["AISIS100", "CSV", "CUFSM", "CrossSectionGeometry", "DataFrames", "FornbergFiniteDiff", "InternalForces", "Interpolations", "LinesCurvesNodes", "NumericalIntegration", "PlautBeamColumnElement", "Plots", "PurlinLine", "ScrewConnections", "SectionProperties", "ThinWalledBeam"]
 path = "."
 uuid = "f25badfd-1de4-4a10-8062-211381391a00"
-version = "0.3.0"
+version = "0.1.0"
 
 [[deps.InteractiveUtils]]
 deps = ["Markdown"]
