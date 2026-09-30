@@ -57,7 +57,7 @@ purlin_line = UI.existing_roof_UI_mapper(purlin_spans, purlin_laps, purlin_spaci
 
 
 
-intelli_frame_type = "1.75\"x4.5\"x2.125\" 16g"
+intelli_frame_type = "1.75x4.5x2.125 16g"
 
 hugger_window_dimensions = (2.5, 1.625)  #(width, height) in inches
 
