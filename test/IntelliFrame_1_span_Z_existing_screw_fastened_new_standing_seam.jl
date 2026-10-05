@@ -57,7 +57,7 @@ purlin_line.applied_pressure*1000*144
 
 
 
-intelli_frame_type = "1.75x4.5x2.125 16g"
+intelli_frame_type = "2x4.5x2.5 16g"
 
 new_deck_type = "Vertical Rib SS 18 24 gauge"
 

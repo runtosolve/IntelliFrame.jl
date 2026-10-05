@@ -1,8 +1,8 @@
 {
-    "project_name": "IntelliFrame Retrofit Example",
-    "project_location": "Corpus Christi, TX",
-    "project_reference": "J26-001",
-    "client_name": "RunToSolve",
+    "project_name": "IntelliFrame Retrofit",
+    "project_location": "New York, NY",
+    "project_reference": "26-001",
+    "client_name": "XYZ LLC",
     "design_report_date": "09/18/2026",
     "time": "09:00:00",
     "revision_no.": 0,
@@ -13,7 +13,7 @@
     "purlin_spans_ft": [25.0, 25.0, 25.0],
     "purlin_type_1": "Z8x2.5 060",
     "purlin_type_2": "Z8x2.5 075",
-    "purlin_size_span_assignment": [2, 1, 2],
+    "purlin_size_span_assignment": [1, 1, 1],
     "purlin_laps_ft": [2.0, 2.0, 2.0, 2.0],
     "purlin_spacing_ft": 4.0,
     "roof_slope": 0.0833,
@@ -23,7 +23,7 @@
 
     "existing_deck_type": "PBR 22 gauge",
 
-    "intelli_frame_type": "1.75x4.5x2.125 16g",
+    "intelli_frame_type": "2x4.5x2.5 16g",
     "intelli_frame_material": {
         "E_ksi": 29500.0,
         "nu": 0.30,
@@ -31,5 +31,11 @@
         "Fu_ksi": 70.0
     },
 
-    "new_deck_type": "PBR 22 gauge"
+    "new_deck_type": "PBR 22 gauge",
+
+    "load": {
+        "q_psf": 30.0,
+        "end_conditions": ["pinned", "pinned"],
+        "deflection_limit_denominator": 240
+    }
 }

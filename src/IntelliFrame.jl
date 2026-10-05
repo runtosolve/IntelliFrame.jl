@@ -231,6 +231,21 @@ function combine_intelli_frame_purlin_geometry(purlin_cross_section_dimensions, 
     intelli_frame_node_geometry = deepcopy(intelli_frame_cross_section_data.node_geometry)
     purlin_t = purlin_cross_section_dimensions[2]
 
+    #Orient the IntelliFrame so that its top flange points the same way as the purlin bottom flange (IRF installation
+    #convention). The IntelliFrame geometry has its bottom flange centered on x = 0, so mirroring it is x -> -x.
+    #Purlin node order: lip, bottom flange, web, top flange, lip. IntelliFrame node order: bottom flange, web, top flange, lip.
+    pn, pnr = purlin_cross_section_data.n, purlin_cross_section_data.n_radius
+    purlin_bottom_flange_node = pn[1] + pnr[1] + floor(Int, pn[2] / 2) + 1
+    purlin_web_node = sum(pn[1:2]) + sum(pnr[1:2]) + floor(Int, pn[3] / 2) + 1
+    purlin_bottom_flange_direction = sign(purlin_cross_section_data.node_geometry[purlin_bottom_flange_node, 1] - purlin_cross_section_data.node_geometry[purlin_web_node, 1])
+    hn, hnr = intelli_frame_cross_section_data.n, intelli_frame_cross_section_data.n_radius
+    intelli_frame_web_node = hn[1] + hnr[1] + floor(Int, hn[2] / 2) + 1
+    intelli_frame_top_flange_node = sum(hn[1:2]) + sum(hnr[1:2]) + floor(Int, hn[3] / 2) + 1
+    intelli_frame_top_flange_direction = sign(intelli_frame_node_geometry[intelli_frame_top_flange_node, 1] - intelli_frame_node_geometry[intelli_frame_web_node, 1])
+    if intelli_frame_top_flange_direction != purlin_bottom_flange_direction
+        intelli_frame_node_geometry[:, 1] = -intelli_frame_node_geometry[:, 1]
+    end
+
     intelli_frame_node_geometry[:, 1] = intelli_frame_node_geometry[:, 1] .+ purlin_top_flange_centerline_geometry[1]
     intelli_frame_node_geometry[:, 2] = intelli_frame_node_geometry[:, 2] .+ purlin_top_flange_centerline_geometry[2] .+ purlin_t/2 #check this
 
@@ -918,10 +933,11 @@ function generate_intelli_frame_net_section_purlin_geometry(intelli_frame_purlin
     #Find all the nodes lower than the punchout.
     hole_index_y = findall(x->x<intelli_frame_punch_out_dimensions[2], intelli_frame_node_geometry[:,2])
 
-    #Find all the nodes to the left of the Hugger web.
-    n_intelli_frame_web = intelli_frame_cross_section_data.n[1] + intelli_frame_cross_section_data.n_radius[1] + floor(Int, intelli_frame_cross_section_data.n[2]/2)
-    intelli_frame_web_x_location = intelli_frame_node_geometry[n_intelli_frame_web, 1]
-    hole_index_x = findall(x->x<=intelli_frame_web_x_location, intelli_frame_node_geometry[:,1])
+    #Restrict to the bottom flange, bottom corner and web (node order: bottom flange, corner, web, corner, top flange, lip),
+    #so that a lip dipping below the punchout height is never picked up. This does not depend on which way the
+    #IntelliFrame faces on the purlin.
+    intelli_frame_web_top_node = intelli_frame_cross_section_data.n[1] + intelli_frame_cross_section_data.n_radius[1] + intelli_frame_cross_section_data.n[2] + 1
+    hole_index_x = collect(1:intelli_frame_web_top_node)
 
     #These are the nodes to be removed
     hole_index = sort(intersect(hole_index_y, hole_index_x))
@@ -1212,8 +1228,14 @@ function calculate_yielding_flexural_strength(intelli_frame_purlin_line)
         Syy_pos = Iyy / cx_minusx
         Syy_neg = Iyy / cx_plusx
  
-        My_yy_pos = Fy_purlin * Syy_pos  #outer fiber is the purlin
-        My_yy_neg = Fy_intelli_frame *Syy_neg  #outer fiber is the IntelliFrame.  This could be incorrect if IntelliFrame yield stress is much higher than purlin yield stress!!!
+        #Yield stress of whichever part owns each outer fiber (the purlin nodes come first in the combined geometry).
+        num_purlin_nodes = size(intelli_frame_purlin_line.purlin_cross_section_data[purlin_section_index].node_geometry, 1)
+        xcoords = intelli_frame_purlin_line.intelli_frame_purlin_cross_section_data[i].node_geometry[:, 1]
+        Fy_minusx = argmin(xcoords) <= num_purlin_nodes ? Fy_purlin : Fy_intelli_frame
+        Fy_plusx  = argmax(xcoords) <= num_purlin_nodes ? Fy_purlin : Fy_intelli_frame
+
+        My_yy_pos = Fy_minusx * Syy_pos
+        My_yy_neg = Fy_plusx * Syy_neg
         My_yy = minimum([My_yy_pos My_yy_neg])  #first yield criterion for AISI 
  
         yielding_flexural_strength_yy[i] = PurlinLine.YieldingFlexuralStrengthData(Syy_pos, Syy_neg, My_yy_pos, My_yy_neg, My_yy, 0.0)  #set eMy=0.0 for now
