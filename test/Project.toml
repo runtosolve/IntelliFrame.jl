@@ -1,13 +1,18 @@
 [deps]
 AISIS100 = "01f7396e-a581-4110-84fa-e8964400bef8"
+BucklingModeIdentification = "9d4c2b7e-5a31-4f8c-b6e2-7c0d1a3f5e91"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CUFSM = "82b4978f-06ae-48e0-88e8-a26b4f7a0fa1"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+IntelliFrame = "f25badfd-1de4-4a10-8062-211381391a00"
 InternalForces = "0ac833a1-d586-4577-9e6b-83a7c69b6692"
 LinesCurvesNodes = "74a74c3a-221d-4cd1-a4eb-c3c8149e7592"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 PurlinLine = "720b0b74-7d22-47cf-9c9b-19f6078eb386"
-IntelliFrame = "f25badfd-1de4-4a10-8062-211381391a00"
 ScrewConnections = "5bf228db-695e-4268-9ee9-a0e568bd4ab1"
 ThinWalledBeam = "1c93ddf5-a21f-4e01-8bde-98213f7f7d54"
 ThinWalledBeamColumn = "79be238d-76c4-453b-a7f7-71368c01feb5"
+
+[sources]
+BucklingModeIdentification = {rev = "main", url = "https://github.com/runtosolve/BucklingModeIdentification.jl.git"}
+IntelliFrame = {path = ".."}

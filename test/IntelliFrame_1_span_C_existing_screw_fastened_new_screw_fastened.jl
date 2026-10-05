@@ -46,7 +46,7 @@ purlin_line.applied_pressure * 1000 * 144
 
 
 
-intelli_frame_type = "1.75x4.5x2.125 16g"
+intelli_frame_type = "2x4.5x2.5 16g"
 
 hugger_window_dimensions = (2.5, 1.625)  #(width, height) in inches
 

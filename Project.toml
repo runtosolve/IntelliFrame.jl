@@ -5,22 +5,41 @@ authors = ["Cris Moen <cris.moen@runtosolve.com>"]
 
 [deps]
 AISIS100 = "01f7396e-a581-4110-84fa-e8964400bef8"
+BucklingModeIdentification = "9d4c2b7e-5a31-4f8c-b6e2-7c0d1a3f5e91"
 CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 CUFSM = "82b4978f-06ae-48e0-88e8-a26b4f7a0fa1"
+CUFSMModalGeometry = "82fbcf34-b322-4c20-ba17-babb40f2cc8c"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 CrossSectionGeometry = "e5713cf4-1a83-4860-95bf-b82253e75fb4"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 FornbergFiniteDiff = "bc6155a8-87c8-416d-b52d-44cfacf6a7f1"
 InternalForces = "0ac833a1-d586-4577-9e6b-83a7c69b6692"
 Interpolations = "a98d9a8b-a2ab-59e6-89dd-64a1c18fca59"
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LinesCurvesNodes = "74a74c3a-221d-4cd1-a4eb-c3c8149e7592"
 NumericalIntegration = "e7bfaba1-d571-5449-8927-abc22e82249b"
 PlautBeamColumnElement = "a45b55a3-f080-4392-acba-796e05a72a03"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 PurlinLine = "720b0b74-7d22-47cf-9c9b-19f6078eb386"
 ScrewConnections = "5bf228db-695e-4268-9ee9-a0e568bd4ab1"
 SectionProperties = "03320fb2-42b0-43fd-9b66-b95dbaa39193"
 ThinWalledBeam = "1c93ddf5-a21f-4e01-8bde-98213f7f7d54"
+cFSM = "f62c156c-76c5-4505-9990-675440343290"
+
+[sources]
+BucklingModeIdentification = {rev = "main", url = "https://github.com/runtosolve/BucklingModeIdentification.jl.git"}
+CUFSMModalGeometry = {rev = "main", url = "https://github.com/runtosolve/CUFSMModalGeometry.jl.git"}
+cFSM = {rev = "main", url = "https://github.com/runtosolve/cFSM.jl.git"}
 
 [compat]
+BucklingModeIdentification = "0.1.0"
+CUFSMModalGeometry = "0.1.0"
+CairoMakie = "0.15.15"
+JSON3 = "1.14.3"
+LinearAlgebra = "1.12.0"
 PlautBeamColumnElement = "0.2"
+Printf = "1.11.0"
 PurlinLine = "0.3.0"
+cFSM = "0.1.0"
