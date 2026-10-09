@@ -1,0 +1,47 @@
+name = "IntelliFrameAPI"
+uuid = "c4e8a1b7-6d20-4f55-9a33-1e7b0c8d2f64"
+version = "0.1.0"
+
+[deps]
+CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+HTTP = "cd3eb016-35fb-5094-929b-558a96fad6f3"
+IntelliFrame = "f25badfd-1de4-4a10-8062-211381391a00"
+JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
+PurlinLine = "720b0b74-7d22-47cf-9c9b-19f6078eb386"
+StructTypes = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
+ThinWalledBeam = "1c93ddf5-a21f-4e01-8bde-98213f7f7d54"
+ThinWalledBeamColumn = "79be238d-76c4-453b-a7f7-71368c01feb5"
+PlautBeamColumnElement = "a45b55a3-f080-4392-acba-796e05a72a03"
+PlautBeamFiniteElement = "8e77ad14-ffa2-4383-ba63-9109f971d658"
+AISIS100 = "01f7396e-a581-4110-84fa-e8964400bef8"
+CUFSM = "82b4978f-06ae-48e0-88e8-a26b4f7a0fa1"
+CUFSMModalGeometry = "82fbcf34-b322-4c20-ba17-babb40f2cc8c"
+CrossSectionGeometry = "e5713cf4-1a83-4860-95bf-b82253e75fb4"
+FornbergFiniteDiff = "bc6155a8-87c8-416d-b52d-44cfacf6a7f1"
+InternalForces = "0ac833a1-d586-4577-9e6b-83a7c69b6692"
+LinesCurvesNodes = "74a74c3a-221d-4cd1-a4eb-c3c8149e7592"
+ScrewConnections = "5bf228db-695e-4268-9ee9-a0e568bd4ab1"
+SectionProperties = "03320fb2-42b0-43fd-9b66-b95dbaa39193"
+BucklingModeIdentification = "9d4c2b7e-5a31-4f8c-b6e2-7c0d1a3f5e91"
+cFSM = "f62c156c-76c5-4505-9990-675440343290"
+UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
+
+[sources]
+AISIS100 = {rev = "main", url = "https://github.com/runtosolve/AISIS100.jl.git"}
+BucklingModeIdentification = {rev = "main", url = "https://github.com/runtosolve/BucklingModeIdentification.jl.git"}
+CUFSM = {rev = "main", url = "https://github.com/runtosolve/CUFSM.jl.git"}
+CUFSMModalGeometry = {rev = "main", url = "https://github.com/runtosolve/CUFSMModalGeometry.jl.git"}
+CrossSectionGeometry = {rev = "main", url = "https://github.com/runtosolve/CrossSectionGeometry.jl.git"}
+FornbergFiniteDiff = {rev = "main", url = "https://github.com/runtosolve/FornbergFiniteDiff.jl.git"}
+IntelliFrame = {path = ".."}
+InternalForces = {rev = "main", url = "https://github.com/runtosolve/InternalForces.jl.git"}
+LinesCurvesNodes = {rev = "main", url = "https://github.com/runtosolve/LinesCurvesNodes.jl.git"}
+PlautBeamColumnElement = {rev = "master", url = "https://github.com/runtosolve/PlautBeamColumnElement.jl.git"}
+PlautBeamFiniteElement = {rev = "main", url = "https://github.com/runtosolve/PlautBeamFiniteElement.jl.git"}
+PurlinLine = {path = "../../PurlinLine"}
+ScrewConnections = {rev = "main", url = "https://github.com/runtosolve/ScrewConnections.jl.git"}
+SectionProperties = {rev = "main", url = "https://github.com/runtosolve/SectionProperties.jl.git"}
+ThinWalledBeam = {rev = "main", url = "https://github.com/runtosolve/ThinWalledBeam.jl.git"}
+ThinWalledBeamColumn = {rev = "main", url = "https://github.com/runtosolve/ThinWalledBeamColumn.jl.git"}
+cFSM = {rev = "main", url = "https://github.com/runtosolve/cFSM.jl.git"}
