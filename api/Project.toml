@@ -26,11 +26,14 @@ SectionProperties = "03320fb2-42b0-43fd-9b66-b95dbaa39193"
 BucklingModeIdentification = "9d4c2b7e-5a31-4f8c-b6e2-7c0d1a3f5e91"
 cFSM = "f62c156c-76c5-4505-9990-675440343290"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
 [sources]
 AISIS100 = {rev = "main", url = "https://github.com/runtosolve/AISIS100.jl.git"}
 BucklingModeIdentification = {rev = "main", url = "https://github.com/runtosolve/BucklingModeIdentification.jl.git"}
-CUFSM = {rev = "main", url = "https://github.com/runtosolve/CUFSM.jl.git"}
 CUFSMModalGeometry = {rev = "main", url = "https://github.com/runtosolve/CUFSMModalGeometry.jl.git"}
 CrossSectionGeometry = {rev = "main", url = "https://github.com/runtosolve/CrossSectionGeometry.jl.git"}
 FornbergFiniteDiff = {rev = "main", url = "https://github.com/runtosolve/FornbergFiniteDiff.jl.git"}

@@ -12,14 +12,15 @@ const ALLOWED_ORIGINS = [
     if !isempty(strip(origin))
 ]
 
-function cors_headers(request::HTTP.Request)
+function cors_headers(request::HTTP.Request; content_type = "application/json")
     origin = HTTP.header(request, "Origin", "")
     allow_origin = origin in ALLOWED_ORIGINS ? origin : first(ALLOWED_ORIGINS)
     [
         "Access-Control-Allow-Origin" => allow_origin,
         "Access-Control-Allow-Headers" => "Content-Type, Authorization",
         "Access-Control-Allow-Methods" => "GET, POST, OPTIONS",
-        "Content-Type" => "application/json",
+        "Access-Control-Expose-Headers" => "Content-Disposition",
+        "Content-Type" => content_type,
     ]
 end
 
@@ -29,7 +30,7 @@ function handle_health(request::HTTP.Request)
     json_response(request, 200, (
         status = "ok",
         service = "IntelliFrameAPI",
-        endpoint = "/intelliframe/base",
+        endpoints = ["/intelliframe/base", "/intelliframe/export-pdf"],
     ))
 end
 
@@ -48,11 +49,43 @@ function handle_calculate(request::HTTP.Request)
     end
 end
 
+# POST body: the /intelliframe/base fields plus the report header (project_name, project_location,
+# project_reference, client_name, revision_no, design_report_date, time) and report_type
+# ("summary" -> Report.pdf, "detailed" -> Report_detailed.pdf). Runs all four cases (existing and
+# retrofit, gravity and uplift) and returns the PDF bytes.
+function handle_export_pdf(request::HTTP.Request)
+    try
+        body = JSON3.read(String(request.body), Dict{String,Any})
+        detailed = get(body, "report_type", "summary") == "detailed"
+        pdf, filename = IntelliFrameAPI.export_report(body; detailed)
+        headers = [cors_headers(request; content_type = "application/pdf");
+                   "Content-Disposition" => "inline; filename=\"$filename\""]
+        HTTP.Response(200, headers, pdf)
+    catch error
+        @error "IntelliFrame report export failed" exception = (error, catch_backtrace())
+        # ArgumentError = bad input (shown to the user as is); anything else is a server failure
+        json_response(request, error isa ArgumentError ? 400 : 500, (
+            error = "Report export failed",
+            detail = error isa ArgumentError ? error.msg : sprint(showerror, error),
+        ))
+    end
+end
+
 const ROUTER = HTTP.Router()
 HTTP.register!(ROUTER, "GET", "/", handle_health)
 HTTP.register!(ROUTER, "OPTIONS", "/", handle_options)
 HTTP.register!(ROUTER, "POST", "/intelliframe/base", handle_calculate)
 HTTP.register!(ROUTER, "OPTIONS", "/intelliframe/base", handle_options)
+HTTP.register!(ROUTER, "POST", "/intelliframe/export-pdf", handle_export_pdf)
+HTTP.register!(ROUTER, "OPTIONS", "/intelliframe/export-pdf", handle_options)
 
-@info "Starting IntelliFrameAPI" port = PORT
-HTTP.serve(ROUTER, "0.0.0.0", PORT)
+@info "Starting IntelliFrameAPI" port = PORT threads = Threads.nthreads()
+server = HTTP.serve!(ROUTER, "0.0.0.0", PORT)
+
+# Compile the report pipeline in the background so the first report request is not ~3 min.
+# A report requested meanwhile waits on the report lock. Set INTELLIFRAME_REPORT_WARMUP=false to skip.
+if lowercase(get(ENV, "INTELLIFRAME_REPORT_WARMUP", "true")) != "false"
+    Threads.@spawn IntelliFrameAPI.warmup_report()
+end
+
+wait(server)

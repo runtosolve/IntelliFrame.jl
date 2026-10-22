@@ -1,8 +1,8 @@
 module IntelliFrameAPI
 
-using CSV, DataFrames, IntelliFrame, PurlinLine, StructTypes, UUIDs
+using CSV, DataFrames, Dates, IntelliFrame, JSON3, PurlinLine, StructTypes, UUIDs
 
-export RunIntelliFrame, IntelliFrameResult, calculate
+export RunIntelliFrame, IntelliFrameResult, calculate, export_report
 
 const DEFAULT_EXISTING_PURLIN = "Z8x2.5 060"
 const INTELLI_FRAME_MATERIAL = [(29500.0, 0.30, 55.0, 70.0)]
@@ -106,5 +106,7 @@ function calculate(data::RunIntelliFrame)::IntelliFrameResult
   output.report_id = data.generate_report ? string(uuid4()) : ""
   return output
 end
+
+include("report.jl")
 
 end
