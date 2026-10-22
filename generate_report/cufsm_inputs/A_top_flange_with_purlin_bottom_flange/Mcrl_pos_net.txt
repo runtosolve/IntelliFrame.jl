@@ -1,0 +1,109 @@
+CUFSM manual-check input dump
+Section: Z8x2.5 060 purlin + IntelliFrame 2x4.5x2.5 16g  |  segment 1 (span, 23.0 ft)  |  orientation: A - IntelliFrame top flange points the same way as the purlin bottom flange
+Material: E = 29500 ksi  |  nu = 0.30  |  Fy purlin = 50 ksi, Fy IntelliFrame = 55 ksi
+Section properties (CUFSM cutwp_prop2): A = 1.1399 in^2, xc = -0.1793 in, yc = 5.8739 in, Ixx = 22.0626 in^4, Iyy = 1.8363 in^4, Ixy = 1.2208 in^4
+Units: in, kip, ksi -- US customary throughout
+Nodes 1-26: existing purlin; nodes 27-39: IntelliFrame (separate open strips in one model)
+Node columns: node# | x | z | xdof | zdof | ydof | qdof | stress
+Elem columns: elem# | nodei | nodej | thickness | mat#
+
+==========================================================================================
+Local buckling, positive strong-axis bending (Mxx = +1 kip-in.), net section at the punch-out (L = L_hole)
+Reference stress: CUFSM stresgen, restrained bending (unsymm = 0), from the combined section properties
+==========================================================================================
+Minimum over the lengths analysed: L = 2.0000 in,  Mcr = 191.4074 kip-in.  (load factor x 1 kip-in.)
+Value stored by IntelliFrame.define: Lcr = 2.0000 in,  Mcr = 191.4074 kip-in.
+
+lengths (copy-paste into CUFSM "lengths to analyze", in) | load factor (kip-in.)
+2.0000   191.4074
+
+mat# | Ex | Ey | vx | vy | Gxy
+100 29500.00 29500.00 0.30 0.30 11346.15
+
+node# | x | z | xdof | zdof | ydof | qdof | stress
+1 -3.0190 0.8364 1 1 1 1 -0.228328
+2 -2.7591 0.4652 1 1 1 1 -0.245152
+3 -2.4977 0.0921 1 1 1 1 -0.262064
+4 -2.4659 0.0597 1 1 1 1 -0.263531
+5 -2.4235 0.0376 1 1 1 1 -0.264531
+6 -2.3787 0.0301 1 1 1 1 -0.264872
+7 -1.2632 0.0300 1 1 1 1 -0.264876
+8 -0.1461 0.0303 1 1 1 1 -0.264865
+9 -0.0750 0.0501 1 1 1 1 -0.263965
+10 -0.0201 0.1050 1 1 1 1 -0.261477
+11 -0.0003 0.1761 1 1 1 1 -0.258255
+12 0.0000 1.7080 1 1 1 1 -0.188820
+13 0.0000 3.2360 1 1 1 1 -0.119563
+14 0.0000 4.7640 1 1 1 1 -0.050306
+15 0.0000 6.2920 1 1 1 1 0.018952
+16 -0.0003 7.8161 1 1 1 1 0.088032
+17 0.0201 7.8950 1 1 1 1 0.091608
+18 0.0750 7.9499 1 1 1 1 0.094097
+19 0.1539 7.9703 1 1 1 1 0.095020
+20 1.2632 7.9700 1 1 1 1 0.095008
+21 2.3739 7.9701 1 1 1 1 0.095012
+22 2.4235 7.9624 1 1 1 1 0.094663
+23 2.4659 7.9403 1 1 1 1 0.093662
+24 2.5006 7.9041 1 1 1 1 0.092022
+25 2.7591 7.5348 1 1 1 1 0.075284
+26 3.0190 7.1636 1 1 1 1 0.058459
+27 0.2031 11.0000 1 1 1 1 0.232344
+28 0.2031 11.6300 1 1 1 1 0.260899
+29 0.2034 12.3161 1 1 1 1 0.291996
+30 0.1830 12.3950 1 1 1 1 0.295573
+31 0.1281 12.4499 1 1 1 1 0.298062
+32 0.0492 12.4703 1 1 1 1 0.298984
+33 -1.0696 12.4700 1 1 1 1 0.298973
+34 -2.1903 12.4701 1 1 1 1 0.298976
+35 -2.2311 12.4649 1 1 1 1 0.298741
+36 -2.2673 12.4499 1 1 1 1 0.298062
+37 -2.2998 12.4247 1 1 1 1 0.296920
+38 -2.4488 12.2756 1 1 1 1 0.290163
+39 -2.5992 12.1252 1 1 1 1 0.283346
+
+elem# | nodei | nodej | thickness | mat#
+1 1 2 0.060000 100
+2 2 3 0.060000 100
+3 3 4 0.060000 100
+4 4 5 0.060000 100
+5 5 6 0.060000 100
+6 6 7 0.060000 100
+7 7 8 0.060000 100
+8 8 9 0.060000 100
+9 9 10 0.060000 100
+10 10 11 0.060000 100
+11 11 12 0.060000 100
+12 12 13 0.060000 100
+13 13 14 0.060000 100
+14 14 15 0.060000 100
+15 15 16 0.060000 100
+16 16 17 0.060000 100
+17 17 18 0.060000 100
+18 18 19 0.060000 100
+19 19 20 0.060000 100
+20 20 21 0.060000 100
+21 21 22 0.060000 100
+22 22 23 0.060000 100
+23 23 24 0.060000 100
+24 24 25 0.060000 100
+25 25 26 0.060000 100
+26 27 28 0.060000 100
+27 28 29 0.060000 100
+28 29 30 0.060000 100
+29 30 31 0.060000 100
+30 31 32 0.060000 100
+31 32 33 0.060000 100
+32 33 34 0.060000 100
+33 34 35 0.060000 100
+34 35 36 0.060000 100
+35 36 37 0.060000 100
+36 37 38 0.060000 100
+37 38 39 0.060000 100
+
+springs (CUFSM 5): spring# | nodei | nodej (0 = ground) | ku (x) | kv (y) | kw (z) | kq (theta) | local | discrete | y/L
+  spring 1 = existing deck on the purlin top flange, spring 2 = new deck on the IntelliFrame top flange; kip/in/in and kip-in/rad/in
+1 20 0 7.73995 0 0 0.866626 0 0 0
+2 33 0 1.93499 0 0 0.442175 0 0 0
+
+constraints: node_e | DOF_e | coefficient | node_k | DOF_k   (DOF 1 = x, 2 = z, 3 = y, 4 = theta; u_e = coefficient x u_k)
+(none -- the IntelliFrame bottom flange is removed at the punch-out, so the two parts are not tied)

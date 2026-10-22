@@ -231,18 +231,18 @@ function combine_intelli_frame_purlin_geometry(purlin_cross_section_dimensions, 
     intelli_frame_node_geometry = deepcopy(intelli_frame_cross_section_data.node_geometry)
     purlin_t = purlin_cross_section_dimensions[2]
 
-    #Orient the IntelliFrame so that its top flange points the same way as the purlin bottom flange (IRF installation
-    #convention). The IntelliFrame geometry has its bottom flange centered on x = 0, so mirroring it is x -> -x.
+    #Orient the IntelliFrame so that its top flange points the same way as the purlin top flange (IRF installation
+    #convention, as drawn in the IntelliFrame web app). The IntelliFrame geometry has its bottom flange centered on x = 0,
+    #so mirroring it is x -> -x.
     #Purlin node order: lip, bottom flange, web, top flange, lip. IntelliFrame node order: bottom flange, web, top flange, lip.
     pn, pnr = purlin_cross_section_data.n, purlin_cross_section_data.n_radius
-    purlin_bottom_flange_node = pn[1] + pnr[1] + floor(Int, pn[2] / 2) + 1
     purlin_web_node = sum(pn[1:2]) + sum(pnr[1:2]) + floor(Int, pn[3] / 2) + 1
-    purlin_bottom_flange_direction = sign(purlin_cross_section_data.node_geometry[purlin_bottom_flange_node, 1] - purlin_cross_section_data.node_geometry[purlin_web_node, 1])
+    purlin_top_flange_direction = sign(purlin_top_flange_centerline_geometry[1] - purlin_cross_section_data.node_geometry[purlin_web_node, 1])
     hn, hnr = intelli_frame_cross_section_data.n, intelli_frame_cross_section_data.n_radius
     intelli_frame_web_node = hn[1] + hnr[1] + floor(Int, hn[2] / 2) + 1
     intelli_frame_top_flange_node = sum(hn[1:2]) + sum(hnr[1:2]) + floor(Int, hn[3] / 2) + 1
     intelli_frame_top_flange_direction = sign(intelli_frame_node_geometry[intelli_frame_top_flange_node, 1] - intelli_frame_node_geometry[intelli_frame_web_node, 1])
-    if intelli_frame_top_flange_direction != purlin_bottom_flange_direction
+    if intelli_frame_top_flange_direction != purlin_top_flange_direction
         intelli_frame_node_geometry[:, 1] = -intelli_frame_node_geometry[:, 1]
     end
 

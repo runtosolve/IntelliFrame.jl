@@ -7,35 +7,23 @@
     "time": "09:00:00",
     "revision_no.": 0,
 
-    "design_method": "ASD",
+    "roof_slope": 0.08333333333333333,
+    "purlin_types": ["Z8x2.5 060"],
+    "deck_type": "SSR Ultra-Dek 18 in. 24 ga",
+
+    "purlin_spans": [16.0, 20.0],
+    "purlin_size_span_assignment": [1, 1],
+    "purlin_laps": [2.0, 2.0],
+    "purlin_spacing": 5.0,
+    "frame_flange_width": 6.0,
+
+
     "loading_direction": "gravity",
 
-    "purlin_spans_ft": [25.0, 25.0, 25.0],
-    "purlin_type_1": "Z8x2.5 060",
-    "purlin_type_2": "Z8x2.5 075",
-    "purlin_size_span_assignment": [1, 1, 1],
-    "purlin_laps_ft": [2.0, 2.0, 2.0, 2.0],
-    "purlin_spacing_ft": 4.0,
-    "roof_slope": 0.0833,
-
-    "frame_flange_width_in": 16.0,
-    "purlin_frame_connection": "Clip-mounted",
-
-    "existing_deck_type": "PBR 22 gauge",
-
+    
     "intelli_frame_type": "2x4.5x2.5 16g",
-    "intelli_frame_material": {
-        "E_ksi": 29500.0,
-        "nu": 0.30,
-        "Fy_ksi": 55.0,
-        "Fu_ksi": 70.0
-    },
 
-    "new_deck_type": "PBR 22 gauge",
-
-    "load": {
-        "q_psf": 30.0,
-        "end_conditions": ["pinned", "pinned"],
-        "deflection_limit_denominator": 240
-    }
+    "purlin_frame_connection": "Clip-mounted",
+    "analysis_type": "retrofit",
+    "generate_report": true
 }

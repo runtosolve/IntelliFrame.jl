@@ -707,8 +707,7 @@ figures under `output_dir/figures/cfsm/<key>/`. Returns the results.
 function run_all_calculations(inputs_path::AbstractString, output_dir::AbstractString;
                               database_path::AbstractString = DATABASE_PATH)
     inputs = open(JSON3.read, inputs_path)
-    mat = inputs.intelli_frame_material
-    E, ν, Fy = Float64(mat.E_ksi), Float64(mat.nu), Float64(mat.Fy_ksi)
+    E, ν, Fy = IntelliFrame_Capacity.line_inputs(inputs).if_mat[1][1:3]
     selected = String(inputs.intelli_frame_type)
 
     db = CSV.read(database_path, DataFrame)

@@ -5,14 +5,15 @@
 // IntelliFrame_cFSM.run_all_calculations (see test/working_code.jl).
 // Compile from the repository root:  typst compile --root . generate_report/Report_detailed.typ
 //
-// Chapter order follows the web app modules: Project, Build, Methods, Existing Roof Analysis (Gravity, Uplift),
-// Retrofitted Roof Analysis (Gravity, Uplift), Summary.
+// Chapter order follows the web app: Project, Methods, Existing Roof (Build, Gravity, Uplift),
+// IntelliFrame RF Retrofit (Build, Gravity, Uplift), Summary.
 
 #let inputs = json("../frontend_output/inputs.json")
 #let cap    = json("capacity_results.json")
 #let cfsm   = json("cfsm_local_buckling.json")
 #let s      = cfsm.specimen
 #let ln     = cap.line
+#let _laps(laps) = if laps.len() == 0 [none (single span)] else if laps.dedup().len() == 1 [#laps.at(0) ft each side of the support] else [#range(0, laps.len(), step: 2).map(i => str(laps.at(i)) + " + " + str(laps.at(i + 1))).join(", ") ft (left + right side, support by support)]
 #let det    = cap.detail
 
 // ─── FORMAT HELPERS ────────────────────────────────────────────────
@@ -52,6 +53,7 @@
 
 #let _ft(x) = [#_fix(x, d: 1) ft]
 #let _psf(x) = [*#_fix(x, d: 1) psf*]
+#let _cap(s) = if s.len() == 0 { s } else { upper(s.first()) + s.slice(s.first().len()) }   // first letter uppercase
 #let _Lratio(r) = [L/#calc.round(r)]
 #let _improve(a, b) = [#_fix((b / a - 1) * 100, d: 0) %]
 #let _na(n, a) = [#_fmt3(n) (#_fmt3(a))]   // nominal (allowable)
@@ -106,7 +108,7 @@
   #_case_table(r, caption)
   #figure(
     image(fig, width: 100%),
-    caption: [#caption -- demand-to-capacity ratios of every limit state at the allowable pressure (star: governing location), strong-axis moment $M_x$ against the allowable strength $M_(n ell)$ along the line, and vertical deflection],
+    caption: [#caption -- demand-to-capacity ratios of every limit state at the allowable pressure (red circle: governing location), strong-axis moment $M_x$ against the allowable strength $M_(n ell)$ along the line, and vertical deflection],
   )
 ]
 
@@ -316,10 +318,62 @@
 This detailed report records the geometry, section properties, bracing stiffness, elastic buckling values and AISI S100-16 strengths behind the allowable roof pressures of the existing purlin line and of the IRF (IntelliFrame) retrofit, for gravity and uplift, together with the bare-IntelliFrame local buckling study (finite strip signature curves, constrained finite strip method and buckling modes). The client report gives the results only.
 
 // ════════════════════════════════════════════════════════════════════════════
-= Build
+= Methods
 // ════════════════════════════════════════════════════════════════════════════
 
-== Existing roof
+== Analysis model
+
+The purlin line is solved as a continuous thin-walled beam (PurlinLine.jl / IntelliFrame.jl) under a uniform roof pressure $q$ on the purlin spacing, resolved along and normal to the slope. The deck bracing (below) acts as continuous springs at the braced flange; the interior supports restrain translation and twist ($u = v = phi = 0$) and the ends are simply supported. The analysis is second order, so the lateral and torsional response that governs lateral-torsional behaviour is contained in the demands $M_x$, $M_y$, $V_y$, $T$ and $B$. The free (unbraced) bottom flange is modelled separately as a beam-column carrying the axial force from $M_x$ and the shear flow from the roof pressure, giving its weak-axis moment for the H4.2 check. In the retrofit the purlin and the IntelliFrame are one section, and the IntelliFrame bottom flange is constrained to the purlin top flange in the finite strip models.
+
+== Purlin line segments
+
+The line is analysed as one continuous member divided into segments. Within the lap length on each side of an interior support the two overlapping purlins act together, so that segment is given a section with the combined thickness of the two purlins. Every strength is calculated separately for each segment; at the node shared by two segments the lower of their strengths is used. The retrofit keeps the same segments, with the IntelliFrame continuous over the supports.
+
+== Deck bracing
+
+The roof deck restrains the top flange it is fastened to with a continuous lateral spring $k_x$ (kip/in. per in.) and rotational spring $k_phi$ (kip-in./rad per in.), from the deck fastener stiffness and the deck's rotational restraint (AISI S100-16 Appendix 2). $L_(c r d)$ is the distortional buckling half-wavelength used with the rotational spring. In the retrofit the existing deck braces the purlin top flange and the new deck braces the IntelliFrame top flange.
+
+== Section strengths (AISI S100-16, #ln.design_code)
+
++ *Elastic buckling.* $M_(c r ell)$ and $M_(c r d)$ of every segment come from finite strip analyses (CUFSM) of the section with the deck springs, for positive and negative strong-axis bending and for weak-axis bending; at the IntelliFrame punch-out the net section is analysed as well.
++ *Flexure.* Direct Strength Method: $M_(n e) = M_y$ (global buckling is handled by the second-order analysis), local-global $M_(n ell)$ from Eq. F3.2.1-1 (F3.2.3 with inelastic reserve when $lambda_ell < 0.776$), net section at the punch-out from F3.2.2, and the lesser of the two governs. Distortional $M_(n d)$ from F4.1.
++ *Shear.* $V_n$ from G2.1 with $V_(c r)$ of the flat web (G2.3) and $V_y$ (G2.1.5), unreinforced web, $k_v$ = 5.34.
++ *Torsion.* Bimoment strength $B_n = F_y C_w \/ W_(n,max)$ (H4.1.1).
++ *Web crippling.* $P_n$ from G5 at every support, one-flange loading, fastened to the support, bearing length = frame flange width.
++ *Interaction checks along the line.* Flexural + torsional (H4.2, with the free-flange term), biaxial bending (H1.2), flexure + shear (H2.1), distortional buckling with the moment-gradient factor on $M_(c r d)$, and web crippling at the supports. Allowable values are nominal values divided by the ASD safety factors.
+
+== Allowable pressure
+
+The roof pressure is iterated until the largest demand-to-capacity ratio of all the checks along the line is 1.0 ($plus.minus$ 0.01). That pressure is the allowable roof pressure; the check and the node where the ratio is 1.0 are the governing limit state and failure location, and the deflection is read from the same solution.
+
+== IntelliFrame local buckling (bare member, cFSM)
+
+The local buckling moment of the bare IntelliFrame is determined independently of the combined model so that the retrofit cannot rely on a local buckling moment higher than the IntelliFrame itself can develop. The member is analysed under a unit strong-axis moment about its own centroid (top flange and lip in compression), simply supported, with the conventional finite strip method (CUFSM, signature curve) and the constrained finite strip method (cFSM, BucklingModeIdentification.jl: pure-local curve and G/D/L/O mode identification on the actual rounded-corner geometry).
+
+*Rule.* $W$ is the widest flat element. The true $L_(c r ell)$ is the first local minimum of the signature curve inside $[0.5 W, 2 W]$ whose buckled shape is local-dominated (L is the largest of its G/D/L/O participations); if there is none, $L_(c r ell)$ is the minimum of the cFSM pure-local curve and $M_(c r ell)$ is the signature curve at that half-wavelength. At the punch-out the net section is the IntelliFrame with the bottom flange and the web below the punch-out height removed, and $L_(c r ell) = min(L_(c r ell,"true"), L_"hole")$ since a local buckle cannot be longer than the punch-out it forms in.
+
+#_tbl([Finite strip analysis parameters],
+  (2fr, 1fr),
+  ([*Parameter*], [*Value*]),
+  (
+    [Reference load], [#cfsm.method.reference_moment],
+    [Boundary conditions], [#cfsm.method.boundary_conditions],
+    [Material], [$E$ = #_fix(cfsm.material.E, d: 0) ksi, $nu$ = #_fix(cfsm.material.nu, d: 2), $F_y$ = #_fix(cfsm.material.Fy, d: 0) ksi (for $M_y$ only)],
+    [Local minimum search range], [$[#cfsm.method.range_lo_W W, #cfsm.method.range_hi_W W]$, #cfsm.method.n_range samples],
+    [Half-wavelength sweep shown], [$[#cfsm.method.plot_lo_W W, #cfsm.method.plot_hi_W W]$],
+    [Elements per flat (bottom flange, web, top flange, lip)], [#cfsm.method.fsm_n.map(str).join(", ")],
+    [Elements per corner ($r_1$, $r_2$, $r_3$)], [#cfsm.method.fsm_n_radius.map(str).join(", ")],
+    [Shortest strip kept], [#cfsm.method.min_segment_t $t$],
+    [cFSM corner model], [#cfsm.method.corner_model],
+  ),
+)
+#pagebreak()
+
+// ════════════════════════════════════════════════════════════════════════════
+= Existing Roof
+// ════════════════════════════════════════════════════════════════════════════
+
+== Build
 
 #figure(
   kind: table,
@@ -331,7 +385,7 @@ This detailed report records the geometry, section properties, bracing stiffness
     table.hline(),
     [Purlin],                       [#ln.purlin_types.at(0)#if ln.assignment.any(a => a == 2) [ and #ln.purlin_types.at(1)] (span assignment #ln.assignment.map(str).join(", "))],
     [Spans],                        [#ln.spans_ft.map(x => str(x)).join(" / ") ft (#ln.spans_ft.len() spans, #_fix(ln.spans_ft.sum(), d: 1) ft total)],
-    [Purlin lap at each interior support], [#ln.laps_ft.at(0) ft each side of the support],
+    [Purlin lap at each interior support], [#_laps(ln.laps_ft)],
     [Purlin spacing],               [#ln.spacing_ft ft],
     [Roof slope],                   [#_fix(ln.roof_slope * 12, d: 1):12 (#_fix(ln.roof_slope, d: 4))],
     [Existing roof deck],           [#ln.existing_deck -- #_deck(det.existing_deck)],
@@ -362,7 +416,7 @@ This detailed report records the geometry, section properties, bracing stiffness
 
 #figure(
   image(cap.profiles.span_configuration, width: 100%),
-  caption: [Span configuration: purlins lapped over the interior frame supports, span lengths in ft, frame flange width #_fix(ln.frame_flange_width_in, d: 1) in. (horizontal to scale, vertical exaggerated 3×)],
+  caption: [Span configuration: #if ln.spans_ft.len() > 1 [purlins lapped over the interior frame supports, ] else [single span, ]span lengths in ft, frame flange width #_fix(ln.frame_flange_width_in, d: 1) in. (horizontal to scale, vertical exaggerated 3×)],
 )
 
 #figure(
@@ -370,7 +424,46 @@ This detailed report records the geometry, section properties, bracing stiffness
   caption: [Existing purlin, #ln.purlin_types.at(0)],
 )
 
-== IRF retrofit
+#_tbl([Segments along the purlin line, left to right],
+  (auto, auto, 2fr, auto, auto),
+  ([*Segment*], [*Length*], [*Section*], [*$t$ (in.)*], [*Type*]),
+  for sg in ln.segments { ([#sg.segment], [#_ft(sg.length_ft)], [#sg.section], [#_fix(sg.t)], [#if sg.lap [Lap (two purlins)] else [Span]]) },
+)
+
+#_props_table(det.existing, [Existing purlin -- centerline section properties per segment])
+
+#_tbl([Existing deck bracing stiffness per segment (deck on the purlin top flange)],
+  (auto, 1fr, 1fr, 1fr),
+  ([*Seg.*], [$k_x$ (kip/in.²)], [$k_phi$ (kip-in./rad/in.)], [$L_(c r d)$ (in.)]),
+  for i in range(det.existing.len()) {
+    let e = det.existing.at(i).bracing
+    ([#(i + 1)], [#_fmt3(e.kx)], [#_fmt3(e.kphi)], [#_fix(e.Lcrd, d: 1)])
+  },
+  align: (left, center, center, center),
+)
+
+#pagebreak()
+
+== Section strengths
+
+#_buckling_table(det.existing, [Existing purlin -- elastic buckling moments (kip-in.) with half-wavelengths (in.), and first-yield moments])
+#_strength_table(det.existing, [Existing purlin -- strengths per segment, nominal (allowable): moments in kip-in.])
+#_wc_table(det.existing_web_crippling, [Existing purlin -- web crippling strength at the supports])
+#if ln.purlin_frame_connection == "Clip-mounted" [
+  #text(8pt)[With a clip-mounted purlin-to-frame connection the clip is assumed to brace the purlin web over the frame flange, and web crippling does not govern.]
+]
+
+#pagebreak()
+#_case(cap.existing_gravity, cap.figures.existing_gravity, [Gravity], [Existing purlin line, gravity])
+#pagebreak()
+#_case(cap.existing_uplift, cap.figures.existing_uplift, [Uplift], [Existing purlin line, uplift])
+#pagebreak()
+
+// ════════════════════════════════════════════════════════════════════════════
+= IntelliFrame RF Retrofit
+// ════════════════════════════════════════════════════════════════════════════
+
+== Build
 
 #figure(
   kind: table,
@@ -448,78 +541,22 @@ This detailed report records the geometry, section properties, bracing stiffness
   ),
 )
 
-== Purlin line segments
-
-The line is analysed as one continuous member divided into segments. Within the lap length on each side of an interior support the two overlapping purlins act together, so that segment is given a section with the combined thickness of the two purlins. Every strength is calculated separately for each segment; at the node shared by two segments the lower of their strengths is used. The retrofit keeps the same segments, with the IntelliFrame continuous over the supports.
-
-#_tbl([Segments along the purlin line, left to right],
-  (auto, auto, 2fr, auto, auto),
-  ([*Segment*], [*Length*], [*Section*], [*$t$ (in.)*], [*Type*]),
-  for sg in ln.segments { ([#sg.segment], [#_ft(sg.length_ft)], [#sg.section], [#_fix(sg.t)], [#if sg.lap [Lap (two purlins)] else [Span]]) },
-)
-
-#_props_table(det.existing, [Existing purlin -- centerline section properties per segment])
 #_props_table(det.retrofit, [Retrofit (purlin + IntelliFrame) -- section properties per segment])
 #_props_table(det.retrofit, [Retrofit, net section at the punch-out -- section properties per segment], net: true)
 
-== Deck bracing
-
-The roof deck restrains the top flange it is fastened to with a continuous lateral spring $k_x$ (kip/in. per in.) and rotational spring $k_phi$ (kip-in./rad per in.), from the deck fastener stiffness and the deck's rotational restraint (AISI S100-16 Appendix 2). $L_(c r d)$ is the distortional buckling half-wavelength used with the rotational spring. In the retrofit the existing deck braces the purlin top flange and the new deck braces the IntelliFrame top flange.
-
-#_tbl([Deck bracing stiffness per segment],
-  (auto, 1fr, 1fr, 1fr, 1fr, 1fr, 1fr),
-  (table.cell(rowspan: 2, align: horizon)[*Seg.*], table.cell(colspan: 3)[*Existing deck on purlin*], table.cell(colspan: 3)[*New deck on IntelliFrame (retrofit)*],
-   [$k_x$ (kip/in.²)], [$k_phi$ (kip-in./rad/in.)], [$L_(c r d)$ (in.)], [$k_x$ (kip/in.²)], [$k_phi$ (kip-in./rad/in.)], [$L_(c r d)$ (in.)]),
-  for i in range(det.existing.len()) {
-    let e = det.existing.at(i).bracing
+#_tbl([New deck bracing stiffness per segment (deck on the IntelliFrame top flange)],
+  (auto, 1fr, 1fr, 1fr),
+  ([*Seg.*], [$k_x$ (kip/in.²)], [$k_phi$ (kip-in./rad/in.)], [$L_(c r d)$ (in.)]),
+  for i in range(det.retrofit.len()) {
     let n = det.retrofit.at(i).new_deck_bracing
-    ([#(i + 1)], [#_fmt3(e.kx)], [#_fmt3(e.kphi)], [#_fix(e.Lcrd, d: 1)], [#_fmt3(n.kx)], [#_fmt3(n.kphi)], [#_fix(n.Lcrd, d: 1)])
+    ([#(i + 1)], [#_fmt3(n.kx)], [#_fmt3(n.kphi)], [#_fix(n.Lcrd, d: 1)])
   },
-  align: (left, center, center, center, center, center, center),
+  align: (left, center, center, center),
 )
 
-// ════════════════════════════════════════════════════════════════════════════
-= Methods
-// ════════════════════════════════════════════════════════════════════════════
-
-== Analysis model
-
-The purlin line is solved as a continuous thin-walled beam (PurlinLine.jl / IntelliFrame.jl) under a uniform roof pressure $q$ on the purlin spacing, resolved along and normal to the slope. The deck bracing of the previous section acts as continuous springs at the braced flange; the interior supports restrain translation and twist ($u = v = phi = 0$) and the ends are simply supported. The analysis is second order, so the lateral and torsional response that governs lateral-torsional behaviour is contained in the demands $M_x$, $M_y$, $V_y$, $T$ and $B$. The free (unbraced) bottom flange is modelled separately as a beam-column carrying the axial force from $M_x$ and the shear flow from the roof pressure, giving its weak-axis moment for the H4.2 check. In the retrofit the purlin and the IntelliFrame are one section, and the IntelliFrame bottom flange is constrained to the purlin top flange in the finite strip models.
-
-== Section strengths (AISI S100-16, #ln.design_code)
-
-+ *Elastic buckling.* $M_(c r ell)$ and $M_(c r d)$ of every segment come from finite strip analyses (CUFSM) of the section with the deck springs, for positive and negative strong-axis bending and for weak-axis bending; at the IntelliFrame punch-out the net section is analysed as well.
-+ *Flexure.* Direct Strength Method: $M_(n e) = M_y$ (global buckling is handled by the second-order analysis), local-global $M_(n ell)$ from Eq. F3.2.1-1 (F3.2.3 with inelastic reserve when $lambda_ell < 0.776$), net section at the punch-out from F3.2.2, and the lesser of the two governs. Distortional $M_(n d)$ from F4.1.
-+ *Shear.* $V_n$ from G2.1 with $V_(c r)$ of the flat web (G2.3) and $V_y$ (G2.1.5), unreinforced web, $k_v$ = 5.34.
-+ *Torsion.* Bimoment strength $B_n = F_y C_w \/ W_(n,max)$ (H4.1.1).
-+ *Web crippling.* $P_n$ from G5 at every support, one-flange loading, fastened to the support, bearing length = frame flange width.
-+ *Interaction checks along the line.* Flexural + torsional (H4.2, with the free-flange term), biaxial bending (H1.2), flexure + shear (H2.1), distortional buckling with the moment-gradient factor on $M_(c r d)$, and web crippling at the supports. Allowable values are nominal values divided by the ASD safety factors.
-
-== Allowable pressure
-
-The roof pressure is iterated until the largest demand-to-capacity ratio of all the checks along the line is 1.0 ($plus.minus$ 0.01). That pressure is the allowable roof pressure; the check and the node where the ratio is 1.0 are the governing limit state and failure location, and the deflection is read from the same solution.
+#pagebreak()
 
 == IntelliFrame local buckling (bare member, cFSM)
-
-The local buckling moment of the bare IntelliFrame is determined independently of the combined model so that the retrofit cannot rely on a local buckling moment higher than the IntelliFrame itself can develop. The member is analysed under a unit strong-axis moment about its own centroid (top flange and lip in compression), simply supported, with the conventional finite strip method (CUFSM, signature curve) and the constrained finite strip method (cFSM, BucklingModeIdentification.jl: pure-local curve and G/D/L/O mode identification on the actual rounded-corner geometry).
-
-*Rule.* $W$ is the widest flat element. The true $L_(c r ell)$ is the first local minimum of the signature curve inside $[0.5 W, 2 W]$ whose buckled shape is local-dominated (L is the largest of its G/D/L/O participations); if there is none, $L_(c r ell)$ is the minimum of the cFSM pure-local curve and $M_(c r ell)$ is the signature curve at that half-wavelength. At the punch-out the net section is the IntelliFrame with the bottom flange and the web below the punch-out height removed, and $L_(c r ell) = min(L_(c r ell,"true"), L_"hole")$ since a local buckle cannot be longer than the punch-out it forms in.
-
-#_tbl([Finite strip analysis parameters],
-  (2fr, 1fr),
-  ([*Parameter*], [*Value*]),
-  (
-    [Reference load], [#cfsm.method.reference_moment],
-    [Boundary conditions], [#cfsm.method.boundary_conditions],
-    [Material], [$E$ = #_fix(cfsm.material.E, d: 0) ksi, $nu$ = #_fix(cfsm.material.nu, d: 2), $F_y$ = #_fix(cfsm.material.Fy, d: 0) ksi (for $M_y$ only)],
-    [Local minimum search range], [$[#cfsm.method.range_lo_W W, #cfsm.method.range_hi_W W]$, #cfsm.method.n_range samples],
-    [Half-wavelength sweep shown], [$[#cfsm.method.plot_lo_W W, #cfsm.method.plot_hi_W W]$],
-    [Elements per flat (bottom flange, web, top flange, lip)], [#cfsm.method.fsm_n.map(str).join(", ")],
-    [Elements per corner ($r_1$, $r_2$, $r_3$)], [#cfsm.method.fsm_n_radius.map(str).join(", ")],
-    [Shortest strip kept], [#cfsm.method.min_segment_t $t$],
-    [cFSM corner model], [#cfsm.method.corner_model],
-  ),
-)
 
 *Reading the figures.* The black line is the signature curve and the blue dashed line is the cFSM pure-local curve. The shaded band is the $[0.5 W, 2 W]$ search range. The blue diamond is the cFSM pure-local minimum and the hollow circle is the signature curve at that half-wavelength; the red dot is the reported point, an orange cross a rejected (non-local-dominated) trough, and green squares the curves at $L = L_"hole"$. The insets show the conventional buckled shape at the reported point (red) and the cFSM pure-local shape (blue) over the undeformed section (dashed).
 
@@ -572,29 +609,6 @@ separately for the section away from the punch-out and for the net section at th
 
 #pagebreak()
 
-// ════════════════════════════════════════════════════════════════════════════
-= Existing Roof Analysis
-// ════════════════════════════════════════════════════════════════════════════
-
-== Section strengths
-
-#_buckling_table(det.existing, [Existing purlin -- elastic buckling moments (kip-in.) with half-wavelengths (in.), and first-yield moments])
-#_strength_table(det.existing, [Existing purlin -- strengths per segment, nominal (allowable): moments in kip-in.])
-#_wc_table(det.existing_web_crippling, [Existing purlin -- web crippling strength at the supports])
-#if ln.purlin_frame_connection == "Clip-mounted" [
-  #text(8pt)[With a clip-mounted purlin-to-frame connection the clip is assumed to brace the purlin web over the frame flange, and web crippling does not govern.]
-]
-
-#pagebreak()
-#_case(cap.existing_gravity, cap.figures.existing_gravity, [Gravity], [Existing purlin line, gravity])
-#pagebreak()
-#_case(cap.existing_uplift, cap.figures.existing_uplift, [Uplift], [Existing purlin line, uplift])
-#pagebreak()
-
-// ════════════════════════════════════════════════════════════════════════════
-= Retrofitted Roof Analysis
-// ════════════════════════════════════════════════════════════════════════════
-
 == Section strengths
 
 #_buckling_table(det.retrofit, [Retrofit (purlin + IntelliFrame) -- elastic buckling moments (kip-in.) with half-wavelengths (in.), and first-yield moments; $M_(c r ell)^+$ values are the governing minima of the previous section], retrofit: true)
@@ -602,9 +616,9 @@ separately for the section away from the punch-out and for the net section at th
 #_wc_table(det.retrofit_web_crippling, [Retrofit -- purlin web crippling strength at the supports (the IntelliFrame bears on the purlin flange)])
 
 #pagebreak()
-#_case(cap.retrofit_gravity, cap.figures.retrofit_gravity, [Gravity], [IRF retrofit, gravity])
+#_case(cap.retrofit_gravity, cap.figures.retrofit_gravity, [Gravity], [IntelliFrame RF retrofit, gravity])
 #pagebreak()
-#_case(cap.retrofit_uplift, cap.figures.retrofit_uplift, [Uplift], [IRF retrofit, uplift])
+#_case(cap.retrofit_uplift, cap.figures.retrofit_uplift, [Uplift], [IntelliFrame RF retrofit, uplift])
 #pagebreak()
 
 // ════════════════════════════════════════════════════════════════════════════
@@ -632,8 +646,8 @@ separately for the section away from the punch-out and for the net section at th
     ),
     [*Allowable pressure*],  [#_psf(eg.allowable_pressure_psf)], [#_psf(rg.allowable_pressure_psf)], [#_psf(eu.allowable_pressure_psf)], [#_psf(ru.allowable_pressure_psf)],
     [Improvement],           table.cell(colspan: 2, align: center)[+#_improve(eg.allowable_pressure_psf, rg.allowable_pressure_psf)], table.cell(colspan: 2, align: center)[+#_improve(eu.allowable_pressure_psf, ru.allowable_pressure_psf)],
-    [Governing limit state], [#text(8.5pt)[#eg.limit_state]], [#text(8.5pt)[#rg.limit_state]], [#text(8.5pt)[#eu.limit_state]], [#text(8.5pt)[#ru.limit_state]],
-    [Failure location],      [#text(8.5pt)[#eg.failure_location]], [#text(8.5pt)[#rg.failure_location]], [#text(8.5pt)[#eu.failure_location]], [#text(8.5pt)[#ru.failure_location]],
+    [Governing limit state], [#text(8.5pt)[#_cap(eg.limit_state)]], [#text(8.5pt)[#_cap(rg.limit_state)]], [#text(8.5pt)[#_cap(eu.limit_state)]], [#text(8.5pt)[#_cap(ru.limit_state)]],
+    [Failure location],      [#text(8.5pt)[#_cap(eg.failure_location)]], [#text(8.5pt)[#_cap(rg.failure_location)]], [#text(8.5pt)[#_cap(eu.failure_location)]], [#text(8.5pt)[#_cap(ru.failure_location)]],
     [Max. deflection],       [#_fix(eg.max_deflection_in, d: 2) in. (#_Lratio(eg.max_deflection_ratio))], [#_fix(rg.max_deflection_in, d: 2) in. (#_Lratio(rg.max_deflection_ratio))], [#_fix(eu.max_deflection_in, d: 2) in. (#_Lratio(eu.max_deflection_ratio))], [#_fix(ru.max_deflection_in, d: 2) in. (#_Lratio(ru.max_deflection_ratio))],
     table.hline(),
   ),

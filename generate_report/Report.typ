@@ -4,14 +4,15 @@
 // IntelliFrame_cFSM.run_all_calculations (see test/working_code.jl).
 // Compile from the repository root:  typst compile --root . generate_report/Report.typ
 //
-// Chapter order follows the web app modules: Project, Build, Methods, Existing Roof Analysis (Gravity, Uplift),
-// Retrofitted Roof Analysis (Gravity, Uplift), Summary.
+// Chapter order follows the web app: Project, Methods, Existing Roof (Build, Gravity, Uplift),
+// IntelliFrame RF Retrofit (Build, Gravity, Uplift), Summary.
 
 #let inputs = json("../frontend_output/inputs.json")
 #let cap    = json("capacity_results.json")     // allowable pressures, existing vs. retrofit
 #let cfsm   = json("cfsm_local_buckling.json")  // bare-IntelliFrame local buckling (Methods)
 #let s      = cfsm.specimen
 #let ln     = cap.line
+#let _laps(laps) = if laps.len() == 0 [none (single span)] else if laps.dedup().len() == 1 [#laps.at(0) ft each side of the support] else [#range(0, laps.len(), step: 2).map(i => str(laps.at(i)) + " + " + str(laps.at(i + 1))).join(", ") ft (left + right side, support by support)]
 
 // ─── FORMAT HELPERS ────────────────────────────────────────────────
 #let _u(it) = text(size: 0.85em, it)
@@ -47,6 +48,7 @@
 
 #let _ft(x) = [#_fix(x, d: 1) ft]
 #let _psf(x) = [*#_fix(x, d: 1) psf*]
+#let _cap(s) = if s.len() == 0 { s } else { upper(s.first()) + s.slice(s.first().len()) }   // first letter uppercase
 #let _Lratio(r) = [L/#calc.round(r)]
 #let _improve(a, b) = [#_fix((b / a - 1) * 100, d: 0) %]
 #let _Mcrl = $M_(c r ell)$
@@ -73,7 +75,7 @@
   #_case_table(r, caption)
   #figure(
     image(fig, width: 100%),
-    caption: [#caption -- demand-to-capacity ratios at the allowable pressure (star: governing location), strong-axis moment against the allowable strength, and vertical deflection],
+    caption: [#caption -- demand-to-capacity ratios at the allowable pressure (red circle: governing location), strong-axis moment against the allowable strength, and vertical deflection],
   )
 ]
 // ───────────────────────────────────────────────────────────────────
@@ -190,13 +192,25 @@
   table.hline(),
 )
 
-This report gives the allowable roof pressure of the existing purlin line and of the same line after the IRF retrofit, for gravity and uplift loading. For each case it reports the limit state that governs, where along the line it governs, and the maximum vertical deflection at the allowable pressure.
+This report gives the allowable roof pressure of the existing purlin line and of the same line after the IRF retrofit, for gravity and uplift loading. For each case it reports the limit state that governs, the location along the line where it governs, and the maximum vertical deflection at the allowable pressure.
 
 // ════════════════════════════════════════════════════════════════════════════
-= Build
+= Analysis Methods
 // ════════════════════════════════════════════════════════════════════════════
 
-== Existing roof
++ *Analysis.* The purlin line is solved as a continuous thin-walled beam under a uniform roof pressure, with the roof deck acting as continuous lateral and rotational bracing on the top flange (both decks in the retrofit). The free bottom flange is modelled separately as a beam-column. The analysis is second order, so lateral-torsional buckling is included in the demands.
++ *Purlin line segments.* The line is analysed as one continuous member. Within the lap length on each side of an interior support the two overlapping purlins act together, so that segment is given a section with the combined thickness of the two purlins; every strength is calculated separately for each segment, and the lower of two adjacent segments' strengths is used where they meet.
++ *Strengths.* Section strengths follow AISI S100-16 (#ln.design_code): flexure by the Direct Strength Method with local, distortional and net-section (punch-out) effects, shear, torsion, and web crippling at the supports. In the retrofit the purlin and the IntelliFrame act as one section.
++ *Allowable pressure.* The pressure is increased until the governing demand-to-capacity ratio along the line reaches 1.0. The limit states checked are flexural + torsional interaction (H4.2), biaxial bending (H1.2), flexure + shear (H2.1), distortional buckling (F4) and web crippling (G5). The deflection is reported at that pressure.
+
+
+#pagebreak()
+
+// ════════════════════════════════════════════════════════════════════════════
+= Existing Roof
+// ════════════════════════════════════════════════════════════════════════════
+
+== Build
 
 #figure(
   kind: table,
@@ -208,7 +222,7 @@ This report gives the allowable roof pressure of the existing purlin line and of
     table.hline(),
     [Purlin],                       [#ln.purlin_types.at(0)#if ln.assignment.any(a => a == 2) [ and #ln.purlin_types.at(1)]],
     [Spans],                        [#ln.spans_ft.map(x => str(x)).join(" / ") ft (#ln.spans_ft.len() spans, #_fix(ln.spans_ft.sum(), d: 1) ft total)],
-    [Purlin lap at each interior support], [#ln.laps_ft.at(0) ft each side of the support],
+    [Purlin lap at each interior support], [#_laps(ln.laps_ft)],
     [Purlin spacing],               [#ln.spacing_ft ft],
     [Roof slope],                   [#_fix(ln.roof_slope * 12, d: 1):12],
     [Existing roof deck],           [#ln.existing_deck],
@@ -220,15 +234,39 @@ This report gives the allowable roof pressure of the existing purlin line and of
 
 #figure(
   image(cap.profiles.span_configuration, width: 100%),
-  caption: [Span configuration: purlins lapped over the interior frame supports, span lengths in ft, frame flange width #_fix(ln.frame_flange_width_in, d: 1) in. (horizontal to scale, vertical exaggerated 3×)],
+  caption: [Span configuration: #if ln.spans_ft.len() > 1 [purlins lapped over the interior frame supports, ] else [single span, ]span lengths in ft, frame flange width #_fix(ln.frame_flange_width_in, d: 1) in. (horizontal to scale, vertical exaggerated 3×)],
 )
 
 #figure(
-  image(cap.profiles.existing_purlin, width: 42%),
+  image(cap.profiles.existing_purlin, width: 30%),
   caption: [Existing purlin, #ln.purlin_types.at(0)],
 )
 
-== IRF retrofit
+#figure(
+  kind: table,
+  caption: [Segments along the purlin line, left to right],
+  table(
+    columns: (auto, auto, 2fr, auto, auto),
+    stroke: none,
+    inset: (x: 5pt, y: 3.5pt),
+    table.hline(),
+    table.header([*Segment*], [*Length*], [*Section*], [*t (in.)*], [*Type*], table.hline()),
+    ..for sg in ln.segments { ([#sg.segment], [#_ft(sg.length_ft)], [#sg.section], [#_fix(sg.t)], [#if sg.lap [Lap (two purlins)] else [Span]]) },
+    table.hline(),
+  ),
+)
+
+#pagebreak()
+#_case(cap.existing_gravity, cap.figures.existing_gravity, [Gravity], [Existing purlin line, gravity])
+#pagebreak()
+#_case(cap.existing_uplift, cap.figures.existing_uplift, [Uplift], [Existing purlin line, uplift])
+#pagebreak()
+
+// ════════════════════════════════════════════════════════════════════════════
+= IntelliFrame RF Retrofit
+// ════════════════════════════════════════════════════════════════════════════
+
+== Build
 
 #figure(
   kind: table,
@@ -257,33 +295,6 @@ This report gives the allowable roof pressure of the existing purlin line and of
   figure(image(cap.profiles.retrofit_assembly, width: 100%), caption: [Retrofit assembly: IntelliFrame on the existing purlin, between the existing and the new deck]),
 )
 
-== Purlin line segments
-
-The line is analysed as one continuous member. Within the lap length on each side of an interior support the two overlapping purlins act together, so that segment is given a section with the combined thickness of the two purlins; every strength is calculated separately for each segment, and the lower of two adjacent segments' strengths is used where they meet.
-
-#figure(
-  kind: table,
-  caption: [Segments along the purlin line, left to right],
-  table(
-    columns: (auto, auto, 2fr, auto, auto),
-    stroke: none,
-    inset: (x: 5pt, y: 3.5pt),
-    table.hline(),
-    table.header([*Segment*], [*Length*], [*Section*], [*t (in.)*], [*Type*], table.hline()),
-    ..for sg in ln.segments { ([#sg.segment], [#_ft(sg.length_ft)], [#sg.section], [#_fix(sg.t)], [#if sg.lap [Lap (two purlins)] else [Span]]) },
-    table.hline(),
-  ),
-)
-
-// ════════════════════════════════════════════════════════════════════════════
-= Methods
-// ════════════════════════════════════════════════════════════════════════════
-
-+ *Analysis.* The purlin line is solved as a continuous thin-walled beam under a uniform roof pressure, with the roof deck acting as continuous lateral and rotational bracing on the top flange (both decks in the retrofit). The free bottom flange is modelled separately as a beam-column. The analysis is second order, so lateral-torsional buckling is included in the demands.
-+ *Strengths.* Section strengths follow AISI S100-16 (#ln.design_code): flexure by the Direct Strength Method with local, distortional and net-section (punch-out) effects, shear, torsion, and web crippling at the supports. In the retrofit the purlin and the IntelliFrame act as one section.
-+ *Allowable pressure.* The pressure is increased until the governing demand-to-capacity ratio along the line reaches 1.0. The limit states checked are flexural + torsional interaction (H4.2), biaxial bending (H1.2), flexure + shear (H2.1), distortional buckling (F4) and web crippling (G5). The deflection is reported at that pressure.
-+ *IntelliFrame local buckling.* For positive bending, the local buckling moment of the retrofit section is the *minimum* of two values: the value from the combined purlin + IntelliFrame model, and the value of the bare IntelliFrame found from its finite strip signature curve with the local half-wavelength identified by the constrained finite strip method (cFSM), converted to the combined section through the critical stress at the IntelliFrame top fiber. This is done for the section away from the punch-out and for the net section at the punch-out.
-
 #figure(
   kind: table,
   caption: [IntelliFrame local buckling moment, positive bending (kip-in.) -- governing value per segment],
@@ -308,26 +319,12 @@ The line is analysed as one continuous member. Within the lap length on each sid
 
 #text(8pt)[Bare IntelliFrame: #_Mcrl = #_fmt3(s.Mcrl_no_hole.Mcrl) kip-in. away from the punch-out and #_fmt3(s.Mcrl_hole.Mcrl) kip-in. at the punch-out, about its own centroid, before conversion to the combined section.]
 
-#text(8pt)[The signature curves, buckling modes and full calculation details are given in the detailed report.]
+
 
 #pagebreak()
-
-// ════════════════════════════════════════════════════════════════════════════
-= Existing Roof Analysis
-// ════════════════════════════════════════════════════════════════════════════
-
-#_case(cap.existing_gravity, cap.figures.existing_gravity, [Gravity], [Existing purlin line, gravity])
+#_case(cap.retrofit_gravity, cap.figures.retrofit_gravity, [Gravity], [IntelliFrame RF retrofit, gravity])
 #pagebreak()
-#_case(cap.existing_uplift, cap.figures.existing_uplift, [Uplift], [Existing purlin line, uplift])
-#pagebreak()
-
-// ════════════════════════════════════════════════════════════════════════════
-= Retrofitted Roof Analysis
-// ════════════════════════════════════════════════════════════════════════════
-
-#_case(cap.retrofit_gravity, cap.figures.retrofit_gravity, [Gravity], [IRF retrofit, gravity])
-#pagebreak()
-#_case(cap.retrofit_uplift, cap.figures.retrofit_uplift, [Uplift], [IRF retrofit, uplift])
+#_case(cap.retrofit_uplift, cap.figures.retrofit_uplift, [Uplift], [IntelliFrame RF retrofit, uplift])
 
 == Allowable flexural strengths
 
@@ -341,7 +338,7 @@ The line is analysed as one continuous member. Within the lap length on each sid
     inset: (x: 5pt, y: 3.5pt),
     table.hline(),
     table.header(
-      table.cell(rowspan: 2, align: horizon)[*Segment*], table.cell(colspan: 2)[*Existing purlin*], table.cell(colspan: 2)[*IRF retrofit*],
+      table.cell(rowspan: 2, align: horizon)[*Segment*], table.cell(colspan: 2)[*Existing purlin*], table.cell(colspan: 2)[*IntelliFrame RF retrofit*],
       [positive (+)], [negative (−)], [positive (+)], [negative (−)],
       table.hline(),
     ),
@@ -379,8 +376,8 @@ The line is analysed as one continuous member. Within the lap length on each sid
     ),
     [*Allowable pressure*],  [#_psf(eg.allowable_pressure_psf)], [#_psf(rg.allowable_pressure_psf)], [#_psf(eu.allowable_pressure_psf)], [#_psf(ru.allowable_pressure_psf)],
     [Improvement],           table.cell(colspan: 2, align: center)[+#_improve(eg.allowable_pressure_psf, rg.allowable_pressure_psf)], table.cell(colspan: 2, align: center)[+#_improve(eu.allowable_pressure_psf, ru.allowable_pressure_psf)],
-    [Governing limit state], [#text(8.5pt)[#eg.limit_state]], [#text(8.5pt)[#rg.limit_state]], [#text(8.5pt)[#eu.limit_state]], [#text(8.5pt)[#ru.limit_state]],
-    [Failure location],      [#text(8.5pt)[#eg.failure_location]], [#text(8.5pt)[#rg.failure_location]], [#text(8.5pt)[#eu.failure_location]], [#text(8.5pt)[#ru.failure_location]],
+    [Governing limit state], [#text(8.5pt)[#_cap(eg.limit_state)]], [#text(8.5pt)[#_cap(rg.limit_state)]], [#text(8.5pt)[#_cap(eu.limit_state)]], [#text(8.5pt)[#_cap(ru.limit_state)]],
+    [Failure location],      [#text(8.5pt)[#_cap(eg.failure_location)]], [#text(8.5pt)[#_cap(rg.failure_location)]], [#text(8.5pt)[#_cap(eu.failure_location)]], [#text(8.5pt)[#_cap(ru.failure_location)]],
     [Max. deflection],       [#_fix(eg.max_deflection_in, d: 2) in. (#_Lratio(eg.max_deflection_ratio))], [#_fix(rg.max_deflection_in, d: 2) in. (#_Lratio(rg.max_deflection_ratio))], [#_fix(eu.max_deflection_in, d: 2) in. (#_Lratio(eu.max_deflection_ratio))], [#_fix(ru.max_deflection_in, d: 2) in. (#_Lratio(ru.max_deflection_ratio))],
     table.hline(),
   ),
@@ -393,5 +390,4 @@ The line is analysed as one continuous member. Within the lap length on each sid
 
 The IRF retrofit raises the allowable gravity pressure of the purlin line from #_fix(eg.allowable_pressure_psf, d: 1) psf to #_fix(rg.allowable_pressure_psf, d: 1) psf and the allowable uplift pressure from #_fix(eu.allowable_pressure_psf, d: 1) psf to #_fix(ru.allowable_pressure_psf, d: 1) psf. Deflections are reported at the allowable pressure; the IRF stiffens the line, so the retrofitted deflection at the higher pressure is #if rg.max_deflection_in < eg.max_deflection_in [still smaller than] else [comparable with] that of the existing line.
 
-#v(1em)
-#text(8pt)[_Reference:_ AISI S100-16, _North American Specification for the Design of Cold-Formed Steel Structural Members_. Analysis with PurlinLine.jl and IntelliFrame.jl (RunToSolve).]
+

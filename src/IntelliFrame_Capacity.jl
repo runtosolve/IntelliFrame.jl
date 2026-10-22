@@ -13,6 +13,7 @@
 module IntelliFrame_Capacity
 
 using Printf
+using CSV, DataFrames
 using CairoMakie
 import PurlinLine
 import IntelliFrame
@@ -34,16 +35,42 @@ const LIMIT_STATE_LABELS = Dict(
 
 # ── Inputs ─────────────────────────────────────────────────────────────────────
 
+"IntelliFrame steel (E, ν, Fy, Fu in ksi) when `inputs.json` gives none -- the value IntelliFrame-API hard-codes."
+const DEFAULT_INTELLI_FRAME_MATERIAL = (29500.0, 0.30, 55.0, 70.0)
+
+"""
+Reads `inputs.json`, which carries the request body the IntelliFrame frontend posts to IntelliFrame-API
+(`purlin_types`, `purlin_spans`, `purlin_laps`, `purlin_spacing`, `frame_flange_width`, `roof_slope`, `deck_type`,
+...) plus the project block used by the report. One `deck_type` is both the existing and the new deck, as in the
+API. `intelli_frame_material` is optional.
+"""
 function line_inputs(inputs)
-    m = inputs.intelli_frame_material
-    return (spans = Tuple(Float64.(inputs.purlin_spans_ft)), laps = Tuple(Float64.(inputs.purlin_laps_ft)),
+    m = get(inputs, :intelli_frame_material, nothing)
+    if_mat = m === nothing ? DEFAULT_INTELLI_FRAME_MATERIAL : (Float64(m.E_ksi), Float64(m.nu), Float64(m.Fy_ksi), Float64(m.Fu_ksi))
+    deck = String(inputs.deck_type)
+    return (spans = Tuple(Float64.(inputs.purlin_spans)), laps = Tuple(Float64.(inputs.purlin_laps)),
             assignment = Tuple(Int.(inputs.purlin_size_span_assignment)),
-            types = (String(inputs.purlin_type_1), String(inputs.purlin_type_2)),
-            spacing = Float64(inputs.purlin_spacing_ft), slope = Float64(inputs.roof_slope),
-            existing_deck = String(inputs.existing_deck_type), new_deck = String(inputs.new_deck_type),
-            frame_flange = Float64(inputs.frame_flange_width_in), connection = String(inputs.purlin_frame_connection),
+            types = Tuple(String.(inputs.purlin_types)),
+            spacing = Float64(inputs.purlin_spacing), slope = Float64(inputs.roof_slope),
+            existing_deck = deck, new_deck = deck,
+            frame_flange = Float64(inputs.frame_flange_width), connection = String(inputs.purlin_frame_connection),
             intelli_frame = String(inputs.intelli_frame_type),
-            if_mat = [(Float64(m.E_ksi), Float64(m.nu), Float64(m.Fy_ksi), Float64(m.Fu_ksi))])
+            if_mat = [if_mat])
+end
+
+"""
+`IntelliFrame.UI.load_databases()` with PurlinLine's deck table appended to both deck tables (decks not already
+listed), as IntelliFrame-API does -- the frontend's deck names ("Rdeck 22 ga", "SSR Ultra-Dek ...") are PurlinLine's.
+"""
+function load_databases()
+    db = IntelliFrame.UI.load_databases()
+    purlin_line_decks = CSV.read(joinpath(pkgdir(PurlinLine), "database", "Existing_Deck.csv"), DataFrame)
+    function with_purlin_line_decks(deck_data)
+        known = Set(String.(deck_data.deck_name))
+        return vcat(deck_data, filter(row -> !(String(row.deck_name) in known), purlin_line_decks); cols = :union)
+    end
+    return merge(db, (existing_deck_data = with_purlin_line_decks(db.existing_deck_data),
+                      new_deck_data = with_purlin_line_decks(db.new_deck_data)))
 end
 
 existing_model(li, db, direction) = IntelliFrame.UI.existing_roof_UI_mapper(li.spans, li.laps, li.spacing, li.slope, db.purlin_data,
@@ -92,9 +119,12 @@ function retrofit_model(pl, li, db, direction, cfsm)
     d = db.intelli_frame_data[findfirst(==(li.intelli_frame), db.intelli_frame_data.section_name), :]
     if_dims = [tuple([d[i] for i = 2:13]...)]
     punch_out = [(d[:punchout_width], d[:punchout_height])]
-    nd = db.new_deck_data[findfirst(==(li.new_deck), db.new_deck_data.deck_name), :]
-    new_deck = li.new_deck == "no deck" ? ["no deck"] :
-               !ismissing(nd[3]) ? ("screw-fastened", nd[2], nd[3], nd[4], nd[5]) : ("vertical leg standing seam", nd[7])
+    new_deck = if li.new_deck == "no deck"
+        ["no deck"]
+    else
+        nd = db.new_deck_data[findfirst(==(li.new_deck), db.new_deck_data.deck_name), :]
+        !ismissing(nd[3]) ? ("screw-fastened", nd[2], nd[3], nd[4], nd[5]) : ("vertical leg standing seam", nd[7])
+    end
     segments = [(s[1], s[2], s[3], 1, 1, 1, 1) for s in pl.inputs.segments]
     ed = db.existing_deck_data[findfirst(==(li.existing_deck), db.existing_deck_data.deck_name), :]
     pl.inputs.deck_details = ("screw-fastened", ed[2], 3.0, 0.212, 2.5)   # IntelliFrame screwed through the existing deck at close spacing
@@ -166,6 +196,20 @@ function section_axis(fig, pos, title)
     return ax
 end
 
+"""
+Sets the axis limits to the drawing (x/y ranges plus `pad`), gives the axis that true aspect at `width` px and
+shrinks the figure to it, so the saved PNG has no empty band above or below the section.
+"""
+function fit_section!(fig, ax, xr, yr; width, pad = 0.3)
+    x0, x1 = xr[1] - pad, xr[2] + pad
+    y0, y1 = yr[1] - pad, yr[2] + pad
+    limits!(ax, x0, x1, y0, y1)
+    ax.width = width
+    ax.height = width * (y1 - y0) / (x1 - x0)
+    resize_to_layout!(fig)
+    return fig
+end
+
 "Three profile figures: existing purlin, IntelliFrame, and the retrofit assembly (with both decks), drawn exactly as the model is analysed."
 function plot_profiles(pl, ifl, li, out_dir)
     mkpath(out_dir)
@@ -179,6 +223,7 @@ function plot_profiles(pl, ifl, li, out_dir)
     fig = Figure(size = (520, 620), backgroundcolor = :white)
     ax = section_axis(fig, (1, 1), "Existing purlin — $(pl.inputs.cross_section_dimensions[si][1])")
     poly!(ax, band(P[:, 1], P[:, 2], tp); color = STEEL_GRAY)
+    fit_section!(fig, ax, extrema(P[:, 1]), extrema(P[:, 2]); width = 300)
     save(joinpath(out_dir, "existing_purlin.png"), fig; px_per_unit = 2); figs["existing_purlin"] = "existing_purlin.png"
 
     I = C[np+1:end, :]   # the IntelliFrame alone, in the orientation it takes on the purlin
@@ -186,6 +231,7 @@ function plot_profiles(pl, ifl, li, out_dir)
     fig = Figure(size = (520, 420), backgroundcolor = :white)
     ax = section_axis(fig, (1, 1), "IntelliFrame — $(li.intelli_frame)")
     poly!(ax, band(I[:, 1], I[:, 2], ti); color = IMETCO_RED)
+    fit_section!(fig, ax, extrema(I[:, 1]), extrema(I[:, 2]); width = 300)
     save(joinpath(out_dir, "intelliframe.png"), fig; px_per_unit = 2); figs["intelliframe"] = "intelliframe.png"
 
     Pc, Ic = C[1:np, :], C[np+1:end, :]
@@ -197,10 +243,13 @@ function plot_profiles(pl, ifl, li, out_dir)
     lines!(ax, [xs[1] - 0.6w, xs[2] + 0.6w], [y_new, y_new]; color = :gray25, linewidth = 3)
     poly!(ax, band(Pc[:, 1], Pc[:, 2], tp); color = STEEL_GRAY)
     poly!(ax, band(Ic[:, 1], Ic[:, 2], ti); color = IMETCO_RED)
-    text!(ax, xs[2] + 0.6w, y_new; text = "new deck ($(li.new_deck))", align = (:right, :bottom), offset = (0, 4), fontsize = 12)
-    text!(ax, xs[2] + 0.6w, y_old; text = "existing deck ($(li.existing_deck))", align = (:right, :bottom), offset = (0, 4), fontsize = 12, color = :gray40)
+    # labels at the left end of the deck lines, clear of the IntelliFrame web
+    text!(ax, xs[1] - 0.6w, y_new; text = "new deck", align = (:left, :bottom), offset = (0, 4), fontsize = 12)
+    text!(ax, xs[1] - 0.6w, y_old; text = "existing deck", align = (:left, :bottom), offset = (0, 4), fontsize = 12, color = :gray40)
     Legend(fig[2, 1], [PolyElement(color = STEEL_GRAY), PolyElement(color = IMETCO_RED)], ["Existing purlin", "IntelliFrame"];
            orientation = :horizontal, framevisible = false)
+    # deck lines run 0.6w past the section each side; leave headroom above the new deck for its label
+    fit_section!(fig, ax, (xs[1] - 0.6w, xs[2] + 0.6w), (minimum(C[:, 2]), y_new + 0.5); width = 420, pad = 0.15)
     save(joinpath(out_dir, "retrofit_assembly.png"), fig; px_per_unit = 2); figs["retrofit_assembly"] = "retrofit_assembly.png"
     return figs
 end
@@ -213,7 +262,7 @@ function plot_case(r, title, path)
     # legends live in their own column to the right of each panel so they never cover the curves
     axes = [Axis(fig[k, 1]; xlabel = k == 3 ? "Distance along the purlin line (ft)" : "", ylabel = yl,
                  xgridstyle = :dot, ygridstyle = :dot)
-            for (k, yl) in enumerate(("Demand / capacity", "Strong-axis moment Mx (kip-in.)", "Vertical deflection (in.)"))]
+            for (k, yl) in enumerate(("Demand / capacity", "Strong-axis moment Mx (kip-in.)", "Vertical deflection (in., up +)"))]
     legend_kw = (framevisible = false, labelsize = 11, rowgap = 2, patchsize = (28, 12), halign = :left, valign = :center, tellheight = false)
 
     ax = axes[1]
@@ -223,7 +272,7 @@ function plot_case(r, title, path)
     lines!(ax, c.z_ft, c.DC.flexure_shear; color = :darkorange, linewidth = 2, label = "Flexure + shear (H2.1)")
     lines!(ax, c.z_ft, c.DC.distortional; color = :seagreen, linewidth = 2, label = "Distortional buckling (F4)")
     hlines!(ax, [1.0]; color = :black, linestyle = :dash, label = "D/C = 1.0 (allowable)")
-    scatter!(ax, [r.failure_location_ft], [1.0]; color = :black, marker = :star5, markersize = 20, label = "Governing location")
+    scatter!(ax, [r.failure_location_ft], [1.0]; color = :red, marker = :circle, markersize = 14, label = "Governing location")
     ylims!(ax, 0, 1.15)
     Legend(fig[1, 2], ax; legend_kw...)
 
@@ -238,8 +287,9 @@ function plot_case(r, title, path)
     ax = axes[3]
     iv = argmax(abs.(c.v_in))
     vlines!(ax, r.supports_ft; color = :gray60, linestyle = :dot)
-    lines!(ax, c.z_ft, c.v_in; color = :steelblue, linewidth = 2.5, label = "Deflection at the allowable pressure")
-    scatter!(ax, [c.z_ft[iv]], [c.v_in[iv]]; color = :red, markersize = 12,
+    # the model's v is positive downward; plot -v so the line bends the way the purlin does (gravity down, uplift up)
+    lines!(ax, c.z_ft, -c.v_in; color = :steelblue, linewidth = 2.5, label = "Deflection at the allowable pressure")
+    scatter!(ax, [c.z_ft[iv]], [-c.v_in[iv]]; color = :red, markersize = 12,
              label = @sprintf("Maximum: %.2f in. (L/%d)\nat %.1f ft", r.max_deflection_in, round(Int, r.max_deflection_ratio), c.z_ft[iv]))
     hlines!(ax, [0.0]; color = :gray40, linewidth = 0.8)
     Legend(fig[3, 2], ax; legend_kw...)
@@ -383,7 +433,9 @@ function plot_span_configuration(spans_ft, laps_ft, frame_flange_in, purlin_dept
         frect!(s - w / 2, s + w / 2, y_top_support - tf, y_top_support)
         frect!(s - tw / 2, s + tw / 2, y_top_support - hb + tf, y_top_support - tf)
         frect!(s - w / 2, s + w / 2, y_top_support - hb, y_top_support - hb + tf)
-        text!(ax, s, y_num; text = "Support $k", align = (:center, :top), fontsize = 15, color = slate)
+        # end labels run inward from the flange edge so they are not clipped by the axis limits
+        x_lbl, h_lbl = k == 1 ? (s - w / 2, :left) : k == length(supports) ? (s + w / 2, :right) : (s, :center)
+        text!(ax, x_lbl, y_num; text = "Support $k", align = (h_lbl, :top), fontsize = 15, color = slate)
     end
     # span dimensions
     for k in 1:n
@@ -397,10 +449,12 @@ function plot_span_configuration(spans_ft, laps_ft, frame_flange_in, purlin_dept
     lines!(ax, [0.0, L], [y_tail, y_tail]; color = slate, linewidth = 1.2)
     arrows2d!(ax, xs, fill(y_tail, length(xs)), zeros(length(xs)), fill(y_tip - y_tail, length(xs));
               color = slate, shaftwidth = 1.2, tiplength = 8, tipwidth = 7)
-    text!(ax, L / 2, y_tail + 0.15h; text = "Uniform roof pressure (gravity shown; uplift acts upward)", align = (:center, :bottom), fontsize = 17, color = slate)
+    # title as a figure label, not in data coordinates, so a short line (one span) does not clip it
+    Label(fig[0, 1], "Uniform roof pressure (gravity shown; uplift acts upward)"; fontsize = 17, color = slate, tellwidth = false)
+    rowgap!(fig.layout, 0)
 
     xlims!(ax, -0.04L, 1.04L)
-    ylims!(ax, y_dim - 1.1h, y_tail + 1.0h)
+    ylims!(ax, y_dim - 1.1h, y_tail + 0.2h)
     save(path, fig; px_per_unit = 2)
     return path
 end
@@ -504,7 +558,7 @@ to `output_dir/figures/capacity/` (paths in the result are relative to
 """
 function run_capacity_analysis(inputs, output_dir, cfsm; intelli_frame_data = nothing)
     li = line_inputs(inputs)
-    db = IntelliFrame.UI.load_databases()
+    db = load_databases()
     intelli_frame_data === nothing || (db = merge(db, (intelli_frame_data = intelli_frame_data,)))   # same table the cFSM step used
     fig_dir = joinpath(output_dir, "figures", "capacity")
     mkpath(fig_dir)
