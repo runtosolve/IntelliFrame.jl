@@ -44,8 +44,15 @@ const LAST_USED = "last_used"
 report_cache_root() = isdir(REPORT_CACHE_DIR[]) ? REPORT_CACHE_DIR[] : (REPORT_CACHE_DIR[] = mktempdir())
 last_used(entry) = (f = joinpath(entry, LAST_USED); isfile(f) ? mtime(f) : 0.0)
 
-"Cache key of the analysis inputs of a report (everything except the project block, date and time)."
-report_cache_key(inputs) = string(hash(JSON3.write([inputs[k] for k in (REPORT_REQUIRED_KEYS..., "loading_direction")])); base = 16)
+"""
+Cache key of the analysis inputs of a report (everything except the project block, date and time).
+Numbers are compared as Float64, so 16 and 16.0 (as a JavaScript client may send them) are the same roof.
+"""
+report_cache_key(inputs) = string(hash(JSON3.write([_number(inputs[k]) for k in (REPORT_REQUIRED_KEYS..., "loading_direction")])); base = 16)
+
+_number(x::Real) = Float64(x)
+_number(x::AbstractVector) = map(_number, x)
+_number(x) = x
 
 copy_results(from, to) = foreach(p -> cp(joinpath(from, p), joinpath(to, p); force = true), REPORT_RESULTS)
 
