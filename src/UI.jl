@@ -293,6 +293,23 @@ end
 
 function existing_roof_UI_mapper(purlin_spans, purlin_laps, purlin_spacing, roof_slope, purlin_data, existing_deck_type, existing_deck_data, frame_flange_width, purlin_frame_connection, purlin_types, purlin_size_span_assignment, loading_direction)
 
+    inputs = existing_roof_inputs(purlin_spans, purlin_laps, purlin_spacing, roof_slope, purlin_data, existing_deck_type, existing_deck_data, frame_flange_width, purlin_frame_connection, purlin_types, purlin_size_span_assignment, loading_direction)
+
+    purlin_line = PurlinLine.build(inputs)
+
+    #Run a test to find the failure pressure of the existing purlin line.
+    purlin_line = PurlinLine.test(purlin_line);
+
+    return purlin_line;
+
+end;
+
+"""
+The `PurlinLine.Inputs` of the existing purlin line, without building or testing it. A retrofit
+(`IntelliFrame.define`) needs only these inputs, not the existing line's capacity.
+"""
+function existing_roof_inputs(purlin_spans, purlin_laps, purlin_spacing, roof_slope, purlin_data, existing_deck_type, existing_deck_data, frame_flange_width, purlin_frame_connection, purlin_types, purlin_size_span_assignment, loading_direction)
+
     design_code = "ASD"
 
     span_segments = define_span_segments(purlin_spans, purlin_laps, purlin_size_span_assignment)
@@ -339,17 +356,9 @@ function existing_roof_UI_mapper(purlin_spans, purlin_laps, purlin_spacing, roof
 
     inputs = PurlinLine.Inputs(loading_direction, design_code, purlin_segments, purlin_spacing, roof_slope, purlin_cross_section_dimensions, purlin_material_properties, existing_roof_panel_details, existing_roof_panel_material_properties, frame_flange_width, support_locations, purlin_frame_connections, intermediate_bridging_locations)
 
-    purlin_line = PurlinLine.build(inputs)
+    return inputs
 
-    # purlin_line = PurlinLine.build(design_code, purlin_segments, purlin_spacing, roof_slope, purlin_cross_section_dimensions, purlin_material_properties, existing_roof_panel_details, existing_roof_panel_material_properties, frame_flange_width, support_locations, purlin_frame_connections, intermediate_bridging_locations)
-
-    #Run a gravity test.
-    # purlin_line.loading_direction = "gravity"
-    purlin_line = PurlinLine.test(purlin_line);
-
-    return purlin_line;
-
-end;
+end
 
 function retrofit_UI_mapper(purlin_line, intelli_frame_data, intelli_frame_type, new_deck_type, new_deck_data, existing_deck_type, existing_deck_data, intelli_frame_material_properties, loading_direction)
 

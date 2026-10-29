@@ -655,9 +655,23 @@ one database/IntelliFrameRF.csv row, with its figures written to
 `output_dir/figures/cfsm/<key>/`. Returns the JSON-ready NamedTuple; figure
 paths in it are relative to `output_dir` (where Report.typ lives).
 """
-function analyze_specimen(row, E, ν, Fy; output_dir)
+const BARE_STUDY_CACHE = Dict{Any, Any}()
+const BARE_STUDY_LOCK  = ReentrantLock()
+
+"""
+    bare_study(row, E, ν, Fy)
+
+The calculations of `analyze_specimen` without the figures: gross and punch-out net
+centerlines, section properties and local buckling of one database/IntelliFrameRF.csv row.
+Memoized on the row's values and the material, so a profile is studied once per process
+(the API's retrofit analysis and the report share the result).
+"""
+function bare_study(row, E, ν, Fy)
+    key = (Tuple(collect(row)), Float64(E), Float64(ν), Float64(Fy))
+    hit = lock(() -> get(BARE_STUDY_CACHE, key, nothing), BARE_STUDY_LOCK)
+    hit === nothing || return hit
+
     name = String(row.section_name)
-    key  = specimen_key(name)
     dims = specimen_dimensions(row)
     t    = dims[1]
     (ismissing(row.punchout_height) || ismissing(row.punchout_width)) && error(
@@ -671,6 +685,27 @@ function analyze_specimen(row, E, ν, Fy; output_dir)
 
     res_gross = local_buckling(X, Y, t, E, ν)
     res_net   = local_buckling(Xn, Yn, t, E, ν; hole_length = Lh)
+
+    study = (; name, dims, t, hp, Lh, X, Y, Xn, Yn, Xr, Yr, gross_sp, net_sp, res_gross, res_net)
+    lock(() -> (BARE_STUDY_CACHE[key] = study), BARE_STUDY_LOCK)
+    return study
+end
+
+"""
+    governing_local_buckling_inputs(row, E, ν, Fy)
+
+The part of an `analyze_specimen` result that `IntelliFrame_Capacity.apply_governing_local_buckling!`
+reads (bare Mcrℓ and section properties, gross and net), from the memoized `bare_study`.
+"""
+function governing_local_buckling_inputs(row, E, ν, Fy)
+    s = bare_study(row, E, ν, Fy)
+    return (Mcrl_no_hole = (Mcrl = s.res_gross.rep.R,), gross_section = section_json(s.gross_sp),
+            Mcrl_hole = (Mcrl = s.res_net.rep.R,), net_section = section_json(s.net_sp))
+end
+
+function analyze_specimen(row, E, ν, Fy; output_dir)
+    (; name, dims, t, hp, Lh, X, Y, Xn, Yn, Xr, Yr, gross_sp, net_sp, res_gross, res_net) = bare_study(row, E, ν, Fy)
+    key = specimen_key(name)
 
     rel_dir = joinpath(FIGURES_DIR, key)
     mkpath(joinpath(output_dir, rel_dir))

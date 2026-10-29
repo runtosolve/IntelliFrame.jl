@@ -82,10 +82,14 @@ HTTP.register!(ROUTER, "OPTIONS", "/intelliframe/export-pdf", handle_options)
 @info "Starting IntelliFrameAPI" port = PORT threads = Threads.nthreads()
 server = HTTP.serve!(ROUTER, "0.0.0.0", PORT)
 
-# Compile the report pipeline in the background so the first report request is not ~3 min.
-# A report requested meanwhile waits on the report lock. Set INTELLIFRAME_REPORT_WARMUP=false to skip.
+# Compile the analysis and the report pipeline in the background so the first requests do not pay
+# Julia's compilation time. A report requested meanwhile waits on the report lock.
+# Set INTELLIFRAME_REPORT_WARMUP=false to skip.
 if lowercase(get(ENV, "INTELLIFRAME_REPORT_WARMUP", "true")) != "false"
-    Threads.@spawn IntelliFrameAPI.warmup_report()
+    Threads.@spawn begin
+        IntelliFrameAPI.warmup_calculate()
+        IntelliFrameAPI.warmup_report()
+    end
 end
 
 wait(server)
