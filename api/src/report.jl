@@ -31,6 +31,37 @@ const REPORT_PROJECT_KEYS = ("project_name", "project_location", "project_refere
 # several tasks at once. Concurrent requests queue here.
 const REPORT_LOCK = ReentrantLock()
 
+# The computed results of a report (the JSON files and figures run_all_calculations writes) are kept per set of
+# analysis inputs, so another report on the same roof -- the detailed one after the summary, a new project name or
+# date, a second click -- only recompiles the Typst templates. The REPORT_CACHE_SIZE most recently used result sets
+# are kept, in a temporary folder of this process (removed at exit, so results never outlive the code that made them).
+const REPORT_RESULTS = (cfsm_local_buckling = "cfsm_local_buckling.json", capacity = "capacity_results.json",
+                        cfsm_figures = joinpath("figures", "cfsm"), capacity_figures = joinpath("figures", "capacity"))
+const REPORT_CACHE_SIZE = 50
+const REPORT_CACHE_DIR = Ref("")
+const LAST_USED = "last_used"
+
+report_cache_root() = isdir(REPORT_CACHE_DIR[]) ? REPORT_CACHE_DIR[] : (REPORT_CACHE_DIR[] = mktempdir())
+last_used(entry) = (f = joinpath(entry, LAST_USED); isfile(f) ? mtime(f) : 0.0)
+
+"Cache key of the analysis inputs of a report (everything except the project block, date and time)."
+report_cache_key(inputs) = string(hash(JSON3.write([inputs[k] for k in (REPORT_REQUIRED_KEYS..., "loading_direction")])); base = 16)
+
+copy_results(from, to) = foreach(p -> cp(joinpath(from, p), joinpath(to, p); force = true), REPORT_RESULTS)
+
+"Stores the results in `output_dir` under `key` and drops the oldest result sets beyond `REPORT_CACHE_SIZE`."
+function cache_results(key, output_dir)
+    root = report_cache_root()
+    staging = mktempdir(root)   # copied in full first, so an interrupted copy never looks like a cached result
+    mkpath(joinpath(staging, "figures"))
+    copy_results(output_dir, staging)
+    touch(joinpath(staging, LAST_USED))
+    mv(staging, joinpath(root, key); force = true)
+    entries = sort(filter(isdir, readdir(root; join = true)); by = last_used, rev = true)
+    foreach(p -> rm(p; recursive = true, force = true), entries[(REPORT_CACHE_SIZE + 1):end])
+    return nothing
+end
+
 _text(x) = (s = x === nothing ? "" : strip(string(x)); isempty(s) ? "—" : s)
 
 """
@@ -74,7 +105,8 @@ end
     export_report(body; detailed = false) -> (pdf::Vector{UInt8}, filename::String)
 
 Runs the full report pipeline (bare-IntelliFrame cFSM study, then the existing and retrofit purlin
-lines for gravity and uplift) for the request `body` and returns the compiled PDF bytes.
+lines for gravity and uplift) for the request `body` and returns the compiled PDF bytes. The computed
+results are reused for later requests with the same analysis inputs (see `report_cache_key`).
 """
 function export_report(body::AbstractDict; detailed::Bool = false)
     inputs = report_inputs(body)
@@ -93,7 +125,19 @@ function export_report(body::AbstractDict; detailed::Bool = false)
             # them, but mktempdir must be able to delete them afterwards
             foreach(p -> chmod(p, 0o644), [joinpath(output_dir, f) for f in (REPORT_TEMPLATES..., REPORT_LOGO)])
 
-            IntelliFrame_cFSM.run_all_calculations(inputs_path, output_dir)
+            key = report_cache_key(inputs)
+            cached = joinpath(report_cache_root(), key)
+            if isdir(cached)
+                copy_results(cached, output_dir)
+                touch(joinpath(cached, LAST_USED))
+            else
+                IntelliFrame_cFSM.run_all_calculations(inputs_path, output_dir)
+                try
+                    cache_results(key, output_dir)
+                catch error   # a failed cache write must not fail the report
+                    @warn "Could not cache the report results" exception = (error, catch_backtrace())
+                end
+            end
             IntelliFrame_cFSM.export_pdf(inputs_path, output_dir; root_dir = work)
             pdf = read(joinpath(output_dir, detailed ? "Report_detailed.pdf" : "Report.pdf"))
             return pdf, report_filename(inputs, detailed)

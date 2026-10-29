@@ -76,6 +76,16 @@ end
 existing_model(li, db, direction) = IntelliFrame.UI.existing_roof_UI_mapper(li.spans, li.laps, li.spacing, li.slope, db.purlin_data,
     li.existing_deck, db.existing_deck_data, li.frame_flange, li.connection, li.types, li.assignment, direction)
 
+"""
+The existing purlin line of `pl` (a built line) tested for `direction`. `PurlinLine.build` does not depend on the
+loading direction, so gravity and uplift share one build.
+"""
+function existing_test(pl, direction)
+    pl = deepcopy(pl)
+    pl.inputs.loading_direction = direction
+    return PurlinLine.test(pl)
+end
+
 
 # ── Governing (minimum) local buckling moment of the retrofit ──────────────────
 
@@ -111,11 +121,11 @@ function apply_governing_local_buckling!(ifl, cfsm)
 end
 
 """
-`IntelliFrame.UI.retrofit_UI_mapper` with the governing local buckling moment
-applied between `define` and `capacity`. `pl` is a fresh existing purlin line
-(the mapper overwrites its deck details).
+The steps of `IntelliFrame.UI.retrofit_UI_mapper` up to `capacity`: `IntelliFrame.define` with the governing
+local buckling moment applied. `pl` is a fresh existing purlin line (its deck details are overwritten). Nothing
+here depends on the loading direction, so gravity and uplift share the result (see `retrofit_capacity`).
 """
-function retrofit_model(pl, li, db, direction, cfsm)
+function retrofit_define(pl, li, db, cfsm)
     d = db.intelli_frame_data[findfirst(==(li.intelli_frame), db.intelli_frame_data.section_name), :]
     if_dims = [tuple([d[i] for i = 2:13]...)]
     punch_out = [(d[:punchout_width], d[:punchout_height])]
@@ -133,8 +143,20 @@ function retrofit_model(pl, li, db, direction, cfsm)
         new_deck, (29500.0, 0.30, 55.0, 70.0), pl.inputs.frame_flange_width, pl.inputs.support_locations,
         pl.inputs.purlin_frame_connections, pl.inputs.bridging_locations)
     lb = apply_governing_local_buckling!(ifl, cfsm)
+    return ifl, lb
+end
+
+"`IntelliFrame.capacity` of a copy of the defined retrofit `ifl` for `direction`."
+function retrofit_capacity(ifl, direction)
+    ifl = deepcopy(ifl)
     ifl.loading_direction = direction
-    return IntelliFrame.capacity(ifl), lb
+    return IntelliFrame.capacity(ifl)
+end
+
+"`IntelliFrame.UI.retrofit_UI_mapper` with the governing local buckling moment applied between `define` and `capacity`."
+function retrofit_model(pl, li, db, direction, cfsm)
+    ifl, lb = retrofit_define(pl, li, db, cfsm)
+    return retrofit_capacity(ifl, direction), lb
 end
 
 
@@ -564,17 +586,24 @@ function run_capacity_analysis(inputs, output_dir, cfsm; intelli_frame_data = no
     mkpath(fig_dir)
     rel(f) = "figures/capacity/" * f
 
+    # one existing build and one retrofit definition, shared by gravity and uplift
+    println("  existing purlin line, gravity …"); flush(stdout)
+    pl_g = existing_model(li, db, "gravity")
+    println("  IntelliFrame retrofit definition …"); flush(stdout)
+    ifl_def, lb = retrofit_define(deepcopy(pl_g), li, db, cfsm)
+
     cases = Dict{Symbol, Any}()
-    lb = nothing
-    pl_g = ifl_g = nothing
+    ifl_g = nothing
     for dir in ("gravity", "uplift")
-        println("  existing purlin line, $dir …"); flush(stdout)
-        pl = existing_model(li, db, dir)
+        if dir == "uplift"
+            println("  existing purlin line, uplift …"); flush(stdout)
+        end
+        pl = dir == "gravity" ? pl_g : existing_test(pl_g, dir)
         println("  IntelliFrame retrofit, $dir …"); flush(stdout)
-        ifl, lb = retrofit_model(deepcopy(pl), li, db, dir, cfsm)
+        ifl = retrofit_capacity(ifl_def, dir)
         cases[Symbol("existing_", dir)] = case_results(pl, dir)
         cases[Symbol("retrofit_", dir)] = case_results(ifl, dir)
-        dir == "gravity" && (pl_g = pl; ifl_g = ifl)
+        dir == "gravity" && (ifl_g = ifl)
         @printf("    existing %.1f psf (%s)  |  retrofit %.1f psf (%s)\n",
                 cases[Symbol("existing_", dir)].allowable_pressure_psf, cases[Symbol("existing_", dir)].limit_state_raw,
                 cases[Symbol("retrofit_", dir)].allowable_pressure_psf, cases[Symbol("retrofit_", dir)].limit_state_raw)

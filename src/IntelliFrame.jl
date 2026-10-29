@@ -683,6 +683,31 @@ end
 
 ######
 
+#CUFSM runs of define are memoized on every input of the run (geometry, springs, constraints, lengths, reference
+#loads, section properties). Segments sharing a section (e.g. every span of a line with one purlin type) and the
+#gravity and uplift models of one line then run each distinct study once. The cache is shared across calls and
+#threads, is emptied when it reaches ELASTIC_BUCKLING_CACHE_SIZE entries, and hands out copies.
+const ELASTIC_BUCKLING_CACHE = Dict{Any, Any}()
+const ELASTIC_BUCKLING_CACHE_LOCK = ReentrantLock()
+const ELASTIC_BUCKLING_CACHE_SIZE = 2000
+
+function cached_elastic_buckling(args...)
+
+    key = deepcopy(args)
+    hit = lock(() -> get(ELASTIC_BUCKLING_CACHE, key, nothing), ELASTIC_BUCKLING_CACHE_LOCK)
+    hit === nothing || return deepcopy(hit)
+
+    result = PurlinLine.get_elastic_buckling(args...)
+
+    lock(ELASTIC_BUCKLING_CACHE_LOCK) do
+        length(ELASTIC_BUCKLING_CACHE) >= ELASTIC_BUCKLING_CACHE_SIZE && empty!(ELASTIC_BUCKLING_CACHE)
+        ELASTIC_BUCKLING_CACHE[key] = result
+    end
+
+    return deepcopy(result)
+
+end
+
 function calculate_elastic_buckling_properties(intelli_frame_purlin_line)
 
     num_purlin_segments = size(intelli_frame_purlin_line.inputs.segments)[1]
@@ -799,7 +824,7 @@ function calculate_elastic_buckling_properties(intelli_frame_purlin_line)
         length_inc = 5
         lengths = collect(0.25*b_top:0.75*b_top/length_inc:1.0*b_top)   #define to catch the local minimum
 
-        CUFSM_local_xx_pos_data, Mcrℓ_xx_pos, Lcrℓ_xx_pos = PurlinLine.get_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)   
+        CUFSM_local_xx_pos_data, Mcrℓ_xx_pos, Lcrℓ_xx_pos = cached_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)   
         
         # mode_index = 4
         # shapes = CUFSM_local_xx_pos_data.shapes
@@ -831,7 +856,7 @@ function calculate_elastic_buckling_properties(intelli_frame_purlin_line)
         length_inc = 5
         lengths = collect(0.25*h:0.75*h/length_inc:1.0*h)   #define to catch the local minimum
 
-        CUFSM_local_xx_neg_data, Mcrℓ_xx_neg, Lcrℓ_xx_neg = PurlinLine.get_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)
+        CUFSM_local_xx_neg_data, Mcrℓ_xx_neg, Lcrℓ_xx_neg = cached_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)
 
         local_buckling_xx_neg[i] = PurlinLine.ElasticBucklingData(CUFSM_local_xx_neg_data, Lcrℓ_xx_neg, Mcrℓ_xx_neg)
 
@@ -850,7 +875,7 @@ function calculate_elastic_buckling_properties(intelli_frame_purlin_line)
         length_inc = 5
         lengths = collect(0.25 * intelli_frame_purlin_line.bracing_data[i].Lcrd:(1.0 * intelli_frame_purlin_line.bracing_data[i].Lcrd)/length_inc:1.25 * intelli_frame_purlin_line.bracing_data[i].Lcrd)   #define to catch the local minimum
 
-        CUFSM_local_yy_pos_data, Mcrℓ_yy_pos, Lcrℓ_yy_pos = PurlinLine.get_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)
+        CUFSM_local_yy_pos_data, Mcrℓ_yy_pos, Lcrℓ_yy_pos = cached_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)
 
     #                 mode_index = 3
     # shapes = CUFSM_local_yy_pos_data.shapes
@@ -874,7 +899,7 @@ function calculate_elastic_buckling_properties(intelli_frame_purlin_line)
         #Try Lcrd of the IntelliFrame as a guide for finding the half-wavelength of the flange and lip (unstiffened element).
         lengths = collect(0.25 * intelli_frame_purlin_line.new_deck_bracing_data[i].Lcrd:(1.0 * intelli_frame_purlin_line.new_deck_bracing_data[i].Lcrd)/length_inc:1.25 * intelli_frame_purlin_line.new_deck_bracing_data[i].Lcrd)   #define to catch the local minimum
 
-        CUFSM_local_yy_neg_data, Mcrℓ_yy_neg, Lcrℓ_yy_neg = PurlinLine.get_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)
+        CUFSM_local_yy_neg_data, Mcrℓ_yy_neg, Lcrℓ_yy_neg = cached_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)
 
         local_buckling_yy_neg[i] = PurlinLine.ElasticBucklingData(CUFSM_local_yy_neg_data, Lcrℓ_yy_neg, Mcrℓ_yy_neg)
 
@@ -891,7 +916,7 @@ function calculate_elastic_buckling_properties(intelli_frame_purlin_line)
         #Use IntelliFrame Lcrd here.
         lengths = collect(0.75 * intelli_frame_purlin_line.new_deck_bracing_data[i].Lcrd:(0.50 * intelli_frame_purlin_line.new_deck_bracing_data[i].Lcrd)/length_inc:1.25 * intelli_frame_purlin_line.new_deck_bracing_data[i].Lcrd)  #define to catch distortional minimum
 
-        CUFSM_dist_pos_data, Mcrd_pos, Lcrd_pos_CUFSM = PurlinLine.get_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)
+        CUFSM_dist_pos_data, Mcrd_pos, Lcrd_pos_CUFSM = cached_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)
 
         distortional_buckling_xx_pos[i] = PurlinLine.ElasticBucklingData(CUFSM_dist_pos_data, Lcrd_pos_CUFSM, Mcrd_pos)
 
@@ -911,7 +936,7 @@ function calculate_elastic_buckling_properties(intelli_frame_purlin_line)
         #Use purlin Lcrd here.
         lengths = collect(0.75 * intelli_frame_purlin_line.bracing_data[i].Lcrd:(0.50 * intelli_frame_purlin_line.bracing_data[i].Lcrd)/length_inc:1.25 * intelli_frame_purlin_line.bracing_data[i].Lcrd)  #define to catch distortional minimum
 
-        CUFSM_dist_neg_data, Mcrd_neg, Lcrd_neg_CUFSM = PurlinLine.get_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)
+        CUFSM_dist_neg_data, Mcrd_neg, Lcrd_neg_CUFSM = cached_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)
 
         distortional_buckling_xx_neg[i] = PurlinLine.ElasticBucklingData(CUFSM_dist_neg_data, Lcrd_neg_CUFSM, Mcrd_neg)
 
@@ -1149,7 +1174,7 @@ function calculate_net_section_local_buckling_properties(intelli_frame_purlin_li
 
         ###########
 
-        CUFSM_local_xx_net_pos_data, Mcrℓ_xx_net_pos, Lcrℓ_xx_net_pos = PurlinLine.get_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)   
+        CUFSM_local_xx_net_pos_data, Mcrℓ_xx_net_pos, Lcrℓ_xx_net_pos = cached_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)   
 
         #Needed this deepcopy here to make struct work correctly.  Otherwise 'node' just kept changing.
 
@@ -1611,7 +1636,7 @@ function calculate_net_section_distortional_buckling_properties(intelli_frame_pu
         #Calculate the buckling load just at Lcrd.
         lengths = [Lcrd]
 
-        CUFSM_distortional_xx_net_pos_data, Mcrd_xx_net_pos, Lcrd_xx_net_pos = PurlinLine.get_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)   
+        CUFSM_distortional_xx_net_pos_data, Mcrd_xx_net_pos, Lcrd_xx_net_pos = cached_elastic_buckling(prop, deepcopy(node), elem, lengths, springs, constraints, neigs, P,Mxx,Mzz,M11,M22,A,xcg,zcg,Ixx,Izz,Ixz,thetap,I11,I22,unsymm)   
 
         #Needed this deepcopy here to make struct work correctly.  Otherwise 'node' just kept changing.
 
