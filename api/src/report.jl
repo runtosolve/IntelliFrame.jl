@@ -155,7 +155,7 @@ end
 "Default inputs (the frontend's defaults) for warming the report pipeline at server start."
 const WARMUP_BODY = Dict{String,Any}(
     "purlin_types" => ["Z8x2.5 060"], "purlin_spans" => [16.0, 20.0], "purlin_size_span_assignment" => [1, 1],
-    "purlin_laps" => [2.0, 2.0], "purlin_spacing" => 5.0, "frame_flange_width" => 6.0, "roof_slope" => 1 / 12,
+    "purlin_laps" => [2.0, 2.0], "purlin_spacing" => 5.0, "frame_flange_width" => 6.0, "roof_slope" => 1.0,
     "deck_type" => "SSR Ultra-Dek 18 in. 24 ga", "intelli_frame_type" => "2x4.5x2.5 16g",
     "purlin_frame_connection" => "Clip-mounted", "project_name" => "Warm-up")
 

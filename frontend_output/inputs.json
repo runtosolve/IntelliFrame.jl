@@ -7,7 +7,7 @@
     "time": "09:00:00",
     "revision_no.": 0,
 
-    "roof_slope": 0.08333333333333333,
+    "roof_slope": 1.0,
     "purlin_types": ["Z8x2.5 060"],
     "deck_type": "SSR Ultra-Dek 18 in. 24 ga",
 

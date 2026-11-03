@@ -14,7 +14,7 @@ mutable struct RunIntelliFrame
   purlin_laps::Vector{Float64}
   purlin_spacing::Float64
   frame_flange_width::Float64
-  roof_slope::Float64
+  roof_slope::Float64   # rise in 12 (1 = 1:12); the analysis takes rise over run, roof_slope / 12
   deck_type::String
   loading_direction::String
   generate_report::Bool
@@ -98,28 +98,27 @@ function calculate(data::RunIntelliFrame)::IntelliFrameResult
   return output
 end
 
-function analyze(data::RunIntelliFrame)::IntelliFrameResult
-  purlin_types = existing_purlin_types(data.purlin_types, DATABASES.intelli_frame_data)
-  existing_roof = (
-    data.purlin_spans,
-    data.purlin_laps,
-    data.purlin_spacing,
-    data.roof_slope,
-    DATABASES.purlin_data,
-    data.deck_type,
-    DATABASES.existing_deck_data,
-    data.frame_flange_width,
-    data.purlin_frame_connection,
-    purlin_types,
-    data.purlin_size_span_assignment,
-    data.loading_direction,
-  )
+"""
+The line inputs of the report (`IntelliFrame_Capacity.line_inputs`, which takes `roof_slope / 12`) for `data`,
+so an analysis and a later report on the same roof share the cached models.
+"""
+function line_inputs(data::RunIntelliFrame)
+  body = (purlin_types = existing_purlin_types(data.purlin_types, DATABASES.intelli_frame_data),
+          purlin_spans = data.purlin_spans, purlin_laps = data.purlin_laps,
+          purlin_size_span_assignment = data.purlin_size_span_assignment, purlin_spacing = data.purlin_spacing,
+          roof_slope = data.roof_slope, deck_type = data.deck_type, frame_flange_width = data.frame_flange_width,
+          purlin_frame_connection = data.purlin_frame_connection, intelli_frame_type = data.intelli_frame_type,
+          intelli_frame_material = (E_ksi = INTELLI_FRAME_MATERIAL[1][1], nu = INTELLI_FRAME_MATERIAL[1][2],
+                                    Fy_ksi = INTELLI_FRAME_MATERIAL[1][3], Fu_ksi = INTELLI_FRAME_MATERIAL[1][4]))
+  return IntelliFrame_cFSM.IntelliFrame_Capacity.line_inputs(body)
+end
 
+function analyze(data::RunIntelliFrame)::IntelliFrameResult
+  li = line_inputs(data)
   model = if data.analysis_type == "retrofit"
-    # the retrofit needs only the existing line's inputs, not its capacity
-    retrofit_analysis(data, IntelliFrame.UI.existing_roof_inputs(existing_roof...))
+    retrofit_analysis(data, li)
   else
-    IntelliFrame.UI.existing_roof_UI_mapper(existing_roof...)
+    IntelliFrame_cFSM.IntelliFrame_Capacity.existing_case(li, DATABASES, data.loading_direction)
   end
 
   output = IntelliFrameResult()
@@ -133,21 +132,17 @@ function analyze(data::RunIntelliFrame)::IntelliFrameResult
 end
 
 """
-The IntelliFrame retrofit as the report computes it (`IntelliFrame_Capacity.retrofit_define` and
-`retrofit_capacity`): `IntelliFrame.UI.retrofit_UI_mapper` plus the governing (minimum) positive local
-buckling moment of the combined section and the bare IntelliFrame cFSM study, so the analysis and the
-report give the same allowable pressure. The cFSM study is memoized per profile and material.
+The IntelliFrame retrofit as the report computes it (`IntelliFrame_Capacity.retrofit_case`):
+`IntelliFrame.UI.retrofit_UI_mapper` plus the governing (minimum) positive local buckling moment of the
+combined section and the bare IntelliFrame cFSM study, so the analysis and the report give the same
+allowable pressure. The cFSM study is memoized per profile and material, the models per line.
 """
-function retrofit_analysis(data::RunIntelliFrame, existing_inputs)
-  capacity = IntelliFrame_cFSM.IntelliFrame_Capacity
+function retrofit_analysis(data::RunIntelliFrame, li)
   profile = findfirst(==(data.intelli_frame_type), DATABASES.intelli_frame_data.section_name)
   profile === nothing && throw(ArgumentError("IntelliFrame profile not in the database: $(data.intelli_frame_type)"))
-  E, ν, Fy = INTELLI_FRAME_MATERIAL[1][1:3]
+  E, ν, Fy = li.if_mat[1][1:3]
   cfsm = IntelliFrame_cFSM.governing_local_buckling_inputs(DATABASES.intelli_frame_data[profile, :], E, ν, Fy)
-  line = (intelli_frame = data.intelli_frame_type, new_deck = data.deck_type, existing_deck = data.deck_type,
-          if_mat = INTELLI_FRAME_MATERIAL)
-  intelli_frame_line, _ = capacity.retrofit_define((inputs = existing_inputs,), line, DATABASES, cfsm)
-  return capacity.retrofit_capacity(intelli_frame_line, data.loading_direction)
+  return IntelliFrame_cFSM.IntelliFrame_Capacity.retrofit_case(li, DATABASES, cfsm, data.loading_direction)
 end
 
 """

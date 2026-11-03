@@ -42,7 +42,8 @@ const DEFAULT_INTELLI_FRAME_MATERIAL = (29500.0, 0.30, 55.0, 70.0)
 Reads `inputs.json`, which carries the request body the IntelliFrame frontend posts to IntelliFrame-API
 (`purlin_types`, `purlin_spans`, `purlin_laps`, `purlin_spacing`, `frame_flange_width`, `roof_slope`, `deck_type`,
 ...) plus the project block used by the report. One `deck_type` is both the existing and the new deck, as in the
-API. `intelli_frame_material` is optional.
+API. `roof_slope` is the rise in 12 (1 = 1:12); the line carries rise over run, `roof_slope / 12`.
+`intelli_frame_material` is optional.
 """
 function line_inputs(inputs)
     m = get(inputs, :intelli_frame_material, nothing)
@@ -51,7 +52,7 @@ function line_inputs(inputs)
     return (spans = Tuple(Float64.(inputs.purlin_spans)), laps = Tuple(Float64.(inputs.purlin_laps)),
             assignment = Tuple(Int.(inputs.purlin_size_span_assignment)),
             types = Tuple(String.(inputs.purlin_types)),
-            spacing = Float64(inputs.purlin_spacing), slope = Float64(inputs.roof_slope),
+            spacing = Float64(inputs.purlin_spacing), slope = Float64(inputs.roof_slope) / 12,
             existing_deck = deck, new_deck = deck,
             frame_flange = Float64(inputs.frame_flange_width), connection = String(inputs.purlin_frame_connection),
             intelli_frame = String(inputs.intelli_frame_type),
@@ -158,6 +159,49 @@ function retrofit_model(pl, li, db, direction, cfsm)
     ifl, lb = retrofit_define(pl, li, db, cfsm)
     return retrofit_capacity(ifl, direction), lb
 end
+
+
+# ── Model cache ────────────────────────────────────────────────────────────────
+
+# The built and tested models are kept per set of line inputs, so the analyses IntelliFrame-API runs one case at a
+# time (/intelliframe/base) and the report, which needs all four cases, compute each model once. A model is well
+# under 1 MB; callers get a copy, so the cached one is never changed.
+const MODEL_CACHE = Dict{Any, Any}()
+const MODEL_CACHE_LOCK = ReentrantLock()
+const MODEL_CACHE_SIZE = 300
+
+model_key(li) = (li.spans, li.laps, li.assignment, li.types, li.spacing, li.slope, li.existing_deck, li.new_deck,
+                 li.frame_flange, li.connection, li.intelli_frame, Tuple(li.if_mat))
+
+function cached_model(compute, key)
+    hit = lock(() -> get(MODEL_CACHE, key, nothing), MODEL_CACHE_LOCK)
+    hit === nothing || return deepcopy(hit)
+    model = compute()
+    lock(MODEL_CACHE_LOCK) do
+        length(MODEL_CACHE) >= MODEL_CACHE_SIZE && empty!(MODEL_CACHE)
+        MODEL_CACHE[key] = model
+    end
+    return deepcopy(model)
+end
+
+"The `PurlinLine.Inputs` of the existing line (built for gravity; `existing_test` sets the direction)."
+existing_inputs(li, db) = IntelliFrame.UI.existing_roof_inputs(li.spans, li.laps, li.spacing, li.slope, db.purlin_data,
+    li.existing_deck, db.existing_deck_data, li.frame_flange, li.connection, li.types, li.assignment, "gravity")
+
+"The existing purlin line built (not tested); shared by gravity and uplift."
+existing_built(li, db) = cached_model(() -> PurlinLine.build(existing_inputs(li, db)), (:existing_built, model_key(li)))
+
+"The existing purlin line tested for `direction` (as `existing_model`)."
+existing_case(li, db, direction) =
+    cached_model(() -> existing_test(existing_built(li, db), direction), (:existing, model_key(li), direction))
+
+"`retrofit_define` of the line, `(ifl, lb)`; shared by gravity and uplift."
+retrofit_defined(li, db, cfsm) =
+    cached_model(() -> retrofit_define((inputs = existing_inputs(li, db),), li, db, cfsm), (:retrofit_define, model_key(li)))
+
+"The IntelliFrame retrofit of the line tested for `direction` (as `retrofit_model`)."
+retrofit_case(li, db, cfsm, direction) =
+    cached_model(() -> retrofit_capacity(first(retrofit_defined(li, db, cfsm)), direction), (:retrofit, model_key(li), direction))
 
 
 # ── Results ────────────────────────────────────────────────────────────────────
@@ -586,11 +630,12 @@ function run_capacity_analysis(inputs, output_dir, cfsm; intelli_frame_data = no
     mkpath(fig_dir)
     rel(f) = "figures/capacity/" * f
 
-    # one existing build and one retrofit definition, shared by gravity and uplift
+    # one existing build and one retrofit definition, shared by gravity and uplift; models the analyses
+    # (IntelliFrame-API /intelliframe/base) already computed for this line come from the model cache
     println("  existing purlin line, gravity …"); flush(stdout)
-    pl_g = existing_model(li, db, "gravity")
+    pl_g = existing_case(li, db, "gravity")
     println("  IntelliFrame retrofit definition …"); flush(stdout)
-    ifl_def, lb = retrofit_define(deepcopy(pl_g), li, db, cfsm)
+    _, lb = retrofit_defined(li, db, cfsm)
 
     cases = Dict{Symbol, Any}()
     ifl_g = nothing
@@ -598,9 +643,9 @@ function run_capacity_analysis(inputs, output_dir, cfsm; intelli_frame_data = no
         if dir == "uplift"
             println("  existing purlin line, uplift …"); flush(stdout)
         end
-        pl = dir == "gravity" ? pl_g : existing_test(pl_g, dir)
+        pl = dir == "gravity" ? pl_g : existing_case(li, db, dir)
         println("  IntelliFrame retrofit, $dir …"); flush(stdout)
-        ifl = retrofit_capacity(ifl_def, dir)
+        ifl = retrofit_case(li, db, cfsm, dir)
         cases[Symbol("existing_", dir)] = case_results(pl, dir)
         cases[Symbol("retrofit_", dir)] = case_results(ifl, dir)
         dir == "gravity" && (ifl_g = ifl)

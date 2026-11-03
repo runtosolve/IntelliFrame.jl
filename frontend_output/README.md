@@ -28,7 +28,7 @@ customary, as listed below. The example holds the frontend's default inputs.
 | `purlin_laps` | Lap length on each side of each interior support (ft) | Array of length `2 * (number of spans - 1)`; `[]` for a single span. The frontend sends lap length / 2 on each side |
 | `purlin_spacing` | Purlin spacing (ft) | Number |
 | `frame_flange_width` | Rafter flange width at the support (in.) | Number |
-| `roof_slope` | Rise over run | Number, e.g. `0.0833` for 1:12 |
+| `roof_slope` | Rise in 12; the analysis uses `roof_slope / 12` as rise over run | Number, e.g. `1` for 1:12 |
 | `deck_type` | Roof deck, used for both the existing deck and the new deck on the IntelliFrame | Any `deck_name` in `database/Existing_Deck.csv` / `New_Deck.csv` or in PurlinLine's `database/Existing_Deck.csv` (e.g. `"Rdeck 22 ga"`, `"SSR Ultra-Dek 18 in. 24 ga"`) |
 | `loading_direction` | Direction of applied pressure (the report runs both) | `"gravity"`, `"uplift"` |
 | `intelli_frame_type` | IntelliFrame sub-purlin section | Any `section_name` in `database/IntelliFrameRF.csv` |
