@@ -18,12 +18,13 @@ using CairoMakie
 import PurlinLine
 import IntelliFrame
 
-export run_capacity_analysis
+export run_capacity_analysis, LIMIT_STATE_LABELS
 
 const KSI_TO_PSF = 144_000.0   # applied_pressure is in kip/in.²
 const IMETCO_RED = RGBf(143 / 255, 26 / 255, 31 / 255)
 const STEEL_GRAY = RGBf(107 / 255, 116 / 255, 128 / 255)
 
+# Display labels for failure_limit_state — Typst report and /intelliframe/base both use this.
 const LIMIT_STATE_LABELS = Dict(
     "strong axis flexure + weak axis flexure + lateral free flange deformation + torsion" => "Flexural + torsional interaction (AISI S100 H4.2)",
     "biaxial bending"       => "Flexure, biaxial bending (AISI S100 H1.2)",

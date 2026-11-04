@@ -123,7 +123,9 @@ function analyze(data::RunIntelliFrame)::IntelliFrameResult
 
   output = IntelliFrameResult()
   output.applied_pressure = model.applied_pressure
-  output.failure_limit_state = model.failure_limit_state
+  # Same display labels the Typst report uses (LIMIT_STATE_LABELS).
+  labels = IntelliFrame_cFSM.IntelliFrame_Capacity.LIMIT_STATE_LABELS
+  output.failure_limit_state = get(labels, model.failure_limit_state, model.failure_limit_state)
   output.failure_location = model.failure_location
   output.input_z = model.model.inputs.z
   output.output_v = model.model.outputs.v
