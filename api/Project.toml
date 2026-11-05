@@ -13,7 +13,7 @@ StructTypes = "856f2bd8-1eba-4b0a-8007-ebc267875bd4"
 ThinWalledBeam = "1c93ddf5-a21f-4e01-8bde-98213f7f7d54"
 ThinWalledBeamColumn = "79be238d-76c4-453b-a7f7-71368c01feb5"
 PlautBeamColumnElement = "a45b55a3-f080-4392-acba-796e05a72a03"
-PlautBeamFiniteElement = "8e77ad14-ffa2-4383-ba63-9109f971d658"
+PlautBeamElement = "1ae087d9-73e4-4680-9675-1d6b63e7ecef"
 AISIS100 = "01f7396e-a581-4110-84fa-e8964400bef8"
 CUFSM = "82b4978f-06ae-48e0-88e8-a26b4f7a0fa1"
 CUFSMModalGeometry = "82fbcf34-b322-4c20-ba17-babb40f2cc8c"
@@ -40,8 +40,8 @@ FornbergFiniteDiff = {rev = "main", url = "https://github.com/runtosolve/Fornber
 IntelliFrame = {path = ".."}
 InternalForces = {rev = "main", url = "https://github.com/runtosolve/InternalForces.jl.git"}
 LinesCurvesNodes = {rev = "main", url = "https://github.com/runtosolve/LinesCurvesNodes.jl.git"}
-PlautBeamColumnElement = {rev = "master", url = "https://github.com/runtosolve/PlautBeamColumnElement.jl.git"}
-PlautBeamFiniteElement = {rev = "main", url = "https://github.com/runtosolve/PlautBeamFiniteElement.jl.git"}
+PlautBeamColumnElement = {rev = "main", url = "https://github.com/runtosolve/PlautBeamColumnElement.jl.git"}
+PlautBeamElement = {rev = "main", url = "https://github.com/runtosolve/PlautBeamElement.jl.git"}
 PurlinLine = {path = "../../PurlinLine"}
 ScrewConnections = {rev = "main", url = "https://github.com/runtosolve/ScrewConnections.jl.git"}
 SectionProperties = {rev = "main", url = "https://github.com/runtosolve/SectionProperties.jl.git"}
